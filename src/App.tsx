@@ -1,24 +1,19 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { useEffect } from 'react';
+import Map2D from './components/Map/Map';
+import MapObject from './MapObject';
 
-function App() {
+const App = (): JSX.Element => {
+  let Map: MapObject | undefined;
+
+  useEffect(() => {
+    Map = new MapObject();
+  }, []);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      {
+        (!!Map) ? <Map2D map={Map}></Map2D> : null
+      }
     </div>
   );
 }
