@@ -1,4 +1,4 @@
-import MapObject from '../../MapObject';
+import MapObject from './MapObject';
 
 interface Map2DProps {
   map: MapObject;
@@ -6,7 +6,7 @@ interface Map2DProps {
 
 const Map2D = ({map}: Map2DProps) => {
   return (
-    <div id='map' style={{ width: '100vh', height: '100vh' }}>
+    <div id='map' style={{ width: '100vw', height: '100vh' }}>
     </div>
   );
 };
