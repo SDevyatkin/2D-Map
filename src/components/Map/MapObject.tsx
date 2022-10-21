@@ -3,7 +3,7 @@ import VectorSource from 'ol/source/Vector';
 import VectorLayer from 'ol/layer/Vector';
 import TileLayer from 'ol/layer/Tile';
 
-import Style from 'ol/style/Style';
+import Style, { StyleFunction } from 'ol/style/Style';
 import Fill from 'ol/style/Fill';
 import Stroke from 'ol/style/Stroke';
 import CircleStyle from 'ol/style/Circle';
@@ -20,10 +20,10 @@ import { udpJsonDataType, mapSettingsType, geoJsonObjectType, dataSortedAltitude
 import { fromLonLat, toLonLat } from 'ol/proj';
 import Text from 'ol/style/Text';
 import Icon from 'ol/style/Icon';
-import { Geometry, Polygon } from 'ol/geom';
+import { Geometry, MultiLineString, Polygon } from 'ol/geom';
 import { Extent, getCenter } from 'ol/extent';
 
-// import { GreatCircle } from 'arc';
+import { GreatCircle } from 'arc';
 
 // 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
 
@@ -49,12 +49,13 @@ class MapObject {
   constructor() {
     this.interactiveMode = true;
     this.userCenter = [4421604, 5397436];
+    this.styles = {};
 
     this.mapSource = new XYZ({});
     this.vectorSource = new VectorSource({});
     this.vectorLayer = new VectorLayer({
       source: this.vectorSource,
-      // style: styleFunction,
+      style: this.setStyle as StyleFunction,
     });
     this.realVectorSource = new VectorSource({});
     this.realVectorLayer = new VectorLayer({
@@ -82,8 +83,10 @@ class MapObject {
     this.draw = new Draw({ source: this.drawSource, type: 'Point' });
     this.snap = new Snap({});
     this.udpJsonData = {};
-    this.styles = {};
     this.geoJsonObject = { 'type': 'FeatureCollection', 'crs': { 'type': 'name' }, 'features': [] };
+    fetch('http://localhost:8080/config', { mode: 'cors' })
+      .then((response: Response) => response.json())
+      .then((data) => this.mapSource.setUrl(data.MapURL))
     this.map = this.createMap();
 
     this.addInteractions('None');
@@ -95,6 +98,10 @@ class MapObject {
     this.map.removeInteraction(this.draw);
     this.map.removeInteraction(this.snap);
     this.addInteractions(value);
+  }
+
+  private setStyle(feature: Feature) {
+    return this.styles[feature.getId() as number];
   }
 
   private addInteractions(value: drawType) {
@@ -113,12 +120,12 @@ class MapObject {
   private createMap(): Map {
     const map = new Map({
       layers: [
-        // new TileLayer({
-        //     source: this.mapSource,
-        // }),
         new TileLayer({
-          source: new OSM(),
+            source: this.mapSource,
         }),
+        // new TileLayer({
+        //   source: new OSM(),
+        // }),
         this.vectorLayer,
         new VectorLayer({
             source: this.realVectorSource,
@@ -279,32 +286,59 @@ class MapObject {
     }
   }
 
-  // private drawLine() {
-  //   const coordinates = [];
-  //   const features = this.drawSource.getFeatures();
+  private drawLine(userPoints: any) {
+    const coordinates = [];
+    const features = this.drawSource.getFeatures();
 
-  //   for (let i = 0; i < features.length; i++) {
+    for (let i = 0; i < features.length; i++) {
 
-  //     if (features[i].getGeometry()?.getType() === 'Point') {
+      if (features[i].getGeometry()?.getType() === 'Point') {
 
-  //       let geom = features[i].getGeometry();
-  //       // geom = toLonLat([geom.flatCoordinates[0], geom.flatCoordinates[1]]);
+        const feature = features[i] as Feature;
 
-  //       if (features[i].getId() === 0) {
-  //         // features[i].setId(userPoints.length);
-  //         // userPoints[features[i].getId()] = geom;
-  //       } else {
-  //         // UserPoints[features[i].getId()] = geom;
-  //       }
+        const geom = feature.getGeometry() as Geometry;
+        const geomExtent = geom.getExtent();
+        const coords = toLonLat(getCenter(geomExtent));
 
-  //     }
+        if (feature.getId() === 0) {
+          feature.setId(userPoints.length);
+          userPoints[feature.getId() as number] = coords;
+        } else {
+          userPoints[feature.getId() as number] = coords;
+        }
 
-  //   }
+      }
 
-  //   for (let point = 0; point < (userPoints.length - 1); point) {
-  //     const arcGenerator = new GreatCi;
-  //   }
-  // }
+    }
+
+    for (let point = 0; point < (userPoints.length - 1); point++) {
+      const arcGenerator = new GreatCircle(
+        { x: userPoints[point][0], y: userPoints[point][1] },
+        { x: userPoints[point + 1][0], y: userPoints[point + 1][1] },
+      );
+
+      const line = arcGenerator.Arc(100, { offset: 10 });
+
+      for (let i = 0; i < line.geometries[0].coords.length - 1; i++) {
+        coordinates.push([
+          line.geometries[0].coords[i],
+          line.geometries[0].coords[i + 1],
+        ]);
+      }
+    }
+
+    for (let i = 0; i < coordinates.length; i++) {
+      coordinates[i][0] = fromLonLat(coordinates[i][0]);
+      coordinates[i][1] = fromLonLat(coordinates[i][1]);
+    }
+
+    const marker = new MultiLineString(coordinates);
+
+    const featureMarker = new Feature({
+      name: 'userFeature',
+      geometry: marker,
+    });
+  }
 
   private updatePolygonFeatures(settings: any, models: any) {
     for (const key in this.udpJsonData) {

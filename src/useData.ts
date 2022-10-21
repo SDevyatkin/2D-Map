@@ -14,10 +14,10 @@ export const useData = () => {
   return { mapConfig, imageNames, polygonModels, markerSettings };
 };
 
-const getMapConfig = () => {
+const getMapConfig = async () => {
   let mapConfig;
 
-  fetch('/MapConfig', { mode: 'cors' })
+  await fetch('/MapConfig', { mode: 'cors' })
     .then((response: Response) => response.json())
     .then((data) => {
       mapConfig = data;

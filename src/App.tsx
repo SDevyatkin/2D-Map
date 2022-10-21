@@ -7,14 +7,13 @@ import { useData } from './useData';
 
 const App = (): JSX.Element => {
 
+  const [Map, setMap] = useState<MapObject | undefined>();
   const [sidebarOpened, setSidebarOpened] = useState<boolean>(false);
 
   // const { mapConfig, imageNames, polygonModels, markerSettings } = useData();
 
-  let Map: MapObject | undefined;
-
   useEffect(() => {
-    Map = new MapObject();
+    !Map && setMap(new MapObject());
   }, []);
 
   const handleSidebar = (event: MouseEvent) => {
