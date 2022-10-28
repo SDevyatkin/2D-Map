@@ -1,4 +1,12 @@
 import { FC } from 'react';
+import Select from '../Select';
+
+const data = [
+  ['LineString', 'Непрерывная линия'],
+  ['Polygon', 'Зона'],
+  ['Circle', 'Окружность'],
+  ['Point', 'Точка'],
+];
 
 const DrawingPanel: FC = () => {
 
@@ -7,10 +15,7 @@ const DrawingPanel: FC = () => {
       <h2>Редактор</h2>
       <div className='selector'>
         <span>Режим</span>
-        <select>
-          <option>Выкл</option>
-          <option>Вкл</option>
-        </select>
+        <Select data={data} noneField='Выкл' />
       </div>
       <div className='buttons'> 
         <button className='primary-btn sidebar-btn'>очистить</button>

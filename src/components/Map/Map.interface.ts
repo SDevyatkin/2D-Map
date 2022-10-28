@@ -40,4 +40,21 @@ export type stylesType = {
   [key: number]: Style;
 };
 
+export type drawStylesType = {
+  [key: string]: Style;
+};
+
 export type drawType = Type | 'None';
+
+export type markerSettingsType = {
+  [key: number]: {
+    image: string,
+    size: number,
+    alpha: number,
+    polygonModel: string,
+  }
+};
+
+export type polygonModelsType = {
+  [key: string]: [number, number][]
+};

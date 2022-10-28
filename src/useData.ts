@@ -1,63 +1,25 @@
 import { useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { getImageNames, getMapConfig, getMarkerSettings, getPolygonModels } from './api';
+import { changeImageNames, changePolygonModels } from './store/modelSettingsSlice';
 
 export const useData = () => {
 
+  const dispatch = useDispatch();
   let mapConfig, imageNames, polygonModels, markerSettings;
 
   useEffect(() => {
     mapConfig = getMapConfig();
-    imageNames = getImageNames();
-    polygonModels = getPolygonModels();
+    imageNames = getImageNames()
+      .then((data) => {
+        dispatch(changeImageNames(data));
+      });
+    polygonModels = getPolygonModels()
+      .then((data) => {
+        dispatch(changePolygonModels(data));
+      });
     markerSettings = getMarkerSettings();
   }, []);
   
   return { mapConfig, imageNames, polygonModels, markerSettings };
-};
-
-const getMapConfig = async () => {
-  let mapConfig;
-
-  await fetch('/MapConfig', { mode: 'cors' })
-    .then((response: Response) => response.json())
-    .then((data) => {
-      mapConfig = data;
-    });
-
-  return mapConfig;
-};
-
-const getImageNames = () => {
-  let imageNames;
-
-  fetch('/ImageNames', { mode: 'cors' })
-    .then((response: Response) => response.json())
-    .then((data) => {
-      imageNames = data;
-    });
-  
-  return imageNames;
-};
-
-const getPolygonModels = () => {
-  let polygonModels;
-
-  fetch('/PolygonModels', { mode: 'cors' })
-    .then((response: Response) => response.json())
-    .then((data) => {
-      polygonModels = data;
-    });
-
-  return polygonModels;
-};
-
-const getMarkerSettings = () => {
-  let markerSettings;
-
-  fetch('/MarkerSettings', { mode: 'cors' })
-    .then((response: Response) => response.json())
-    .then((data) => {
-      markerSettings = data;
-    });
-
-  return markerSettings;
 };

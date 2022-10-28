@@ -1,44 +1,39 @@
-import { MouseEvent, useEffect, useState } from 'react';
+import { createContext, MouseEvent, useEffect, useState } from 'react';
+import { Context } from 'vm';
 import Map2D from './components/Map/Map';
 import MapObject from './components/Map/MapObject';
 import Panel from './components/Panel';
 import Sidebar from './components/Sidebar';
 import { useData } from './useData';
 
+export const MapContext = createContext<MapObject>(new MapObject());
+
 const App = (): JSX.Element => {
+
+  let CanvasMap: MapObject | undefined = undefined
 
   const [Map, setMap] = useState<MapObject | undefined>();
   const [sidebarOpened, setSidebarOpened] = useState<boolean>(false);
 
-  // const { mapConfig, imageNames, polygonModels, markerSettings } = useData();
+  const { } = useData();
 
   useEffect(() => {
-    !Map && setMap(new MapObject());
-  }, []);
-
+    if (CanvasMap == undefined) return;
+    CanvasMap = new MapObject()    
+    setMap(CanvasMap);
+  }, [])
+  
   const handleSidebar = (event: MouseEvent) => {
     setSidebarOpened(state => !state);
   };
 
   return (
-    <div>
-      <Panel handleSidebar={handleSidebar} />
-      <Sidebar opened={sidebarOpened} handleSidebar={handleSidebar} />
-      <div 
-        id='map' 
-        style={{ 
-          width: '100vw', 
-          height: '95vh',
-          bottom: 0,
-        }}
-      >
+    <>
+      <div>
+        <Panel handleSidebar={handleSidebar} />
+        <Sidebar opened={sidebarOpened} handleSidebar={handleSidebar} />
       </div>
-      
-      {/* <Map2D map={Map} /> */}
-      {/* {
-        (!!Map) ? <Map2D map={Map}></Map2D> : null
-      } */}
-    </div>
+    </>
   );
 }
 

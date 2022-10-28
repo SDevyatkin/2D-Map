@@ -16,19 +16,20 @@ import MousePosition from 'ol/control/MousePosition';
 import { createStringXY } from 'ol/coordinate';
 import GeoJSON from 'ol/format/GeoJSON';
 
-import { udpJsonDataType, mapSettingsType, geoJsonObjectType, dataSortedAltitudeType, stylesType, drawType } from './Map.interface';
-import { fromLonLat, toLonLat } from 'ol/proj';
+import { udpJsonDataType, mapSettingsType, geoJsonObjectType, dataSortedAltitudeType, stylesType, drawType, markerSettingsType, drawStylesType, polygonModelsType } from './Map.interface';
+import { fromLonLat, toLonLat, useGeographic } from 'ol/proj';
 import Text from 'ol/style/Text';
 import Icon from 'ol/style/Icon';
 import { Geometry, MultiLineString, Polygon } from 'ol/geom';
 import { Extent, getCenter } from 'ol/extent';
 
 import { GreatCircle } from 'arc';
+import { getMapConfig, getMapData, getMapSettings, getMarkerSettings, getPolygonModels } from '../../api';
 
 // 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
 
 class MapObject {
-  private map: Map;
+  private map!: Map;
   private mapSource: XYZ;
   private vectorSource: VectorSource;
   private vectorLayer: VectorLayer<VectorSource>;
@@ -36,11 +37,14 @@ class MapObject {
   private realVectorLayer: VectorLayer<VectorSource>;
   private udpJsonData: udpJsonDataType;
   private mapSettings: mapSettingsType = {};
-  private draw_feature = {};
+  private markerSettings: markerSettingsType;
+  private polygonModels: polygonModelsType;
+  private drawFeature = {};
   private geoJsonObject: geoJsonObjectType;
   private interactiveMode: boolean;
   private userCenter: [number, number];
   private styles: stylesType;
+  private drawStyles: drawStylesType;
   private drawSource: VectorSource;
   private drawVector: VectorLayer<VectorSource>;
   private draw: Draw;
@@ -55,7 +59,7 @@ class MapObject {
     this.vectorSource = new VectorSource({});
     this.vectorLayer = new VectorLayer({
       source: this.vectorSource,
-      style: this.setStyle as StyleFunction,
+      style: this.setStyle.bind(this) as StyleFunction,
     });
     this.realVectorSource = new VectorSource({});
     this.realVectorLayer = new VectorLayer({
@@ -80,18 +84,73 @@ class MapObject {
         }),
       }),
     });
+    this.drawStyles = {
+      LineString: new Style({
+          stroke: new Stroke({
+              color: 'green',
+              width: 1,
+          }),
+      }),
+      MultiLineString: new Style({
+          stroke: new Stroke({
+              color: 'green',
+              width: 1,
+          }),
+      }),
+  
+      MultiPolygon: new Style({
+          stroke: new Stroke({
+              color: 'yellow',
+              width: 1,
+          }),
+          fill: new Fill({
+              color: 'rgba(255, 255, 0, 0.1)',
+          }),
+      }),
+      Polygon: new Style({
+          stroke: new Stroke({
+              color: 'blue',
+              lineDash: [4],
+              width: 3,
+          }),
+          fill: new Fill({
+              color: 'rgba(0, 0, 255, 0.1)',
+          }),
+      }),
+      GeometryCollection: new Style({
+          stroke: new Stroke({
+              color: 'magenta',
+              width: 2,
+          }),
+          fill: new Fill({
+              color: 'magenta',
+          }),
+          image: new CircleStyle({
+              radius: 10,
+              stroke: new Stroke({
+                  color: 'magenta',
+              }),
+          }),
+      }),
+      Circle: new Style({
+          stroke: new Stroke({
+              color: 'red',
+              width: 2,
+          }),
+          fill: new Fill({
+              color: 'rgba(255,0,0,0.2)',
+          }),
+      })
+    };
     this.draw = new Draw({ source: this.drawSource, type: 'Point' });
     this.snap = new Snap({});
     this.udpJsonData = {};
     this.geoJsonObject = { 'type': 'FeatureCollection', 'crs': { 'type': 'name' }, 'features': [] };
-    fetch('http://localhost:8080/config', { mode: 'cors' })
-      .then((response: Response) => response.json())
-      .then((data) => this.mapSource.setUrl(data.MapURL))
-    this.map = this.createMap();
+    this.mapSettings = {};
+    this.markerSettings = {};
+    this.polygonModels = {};
 
-    this.addInteractions('None');
-    // this.getData();
-    // this.getMapSettings();
+    this.createMap();
   }
 
   public changeInteractions(value: drawType) {
@@ -100,8 +159,25 @@ class MapObject {
     this.addInteractions(value);
   }
 
+  public getUdpJsonData() {
+    return this.udpJsonData;
+  }
+
   private setStyle(feature: Feature) {
     return this.styles[feature.getId() as number];
+  }
+
+  private async setMapUrl() {
+    const mapConfig = await getMapConfig();
+    this.mapSource.setUrl(mapConfig.MapURL);
+  }
+
+  private async getMarkerSettings() {
+    this.markerSettings = await getMarkerSettings();
+  }
+
+  private async getPolygonModels() {
+    this.polygonModels = await getPolygonModels();
   }
 
   private addInteractions(value: drawType) {
@@ -117,7 +193,14 @@ class MapObject {
     }
   }
 
-  private createMap(): Map {
+  private async createMap() {
+
+    await this.setMapUrl();
+    await this.getMapData();
+    await this.getMarkerSettings();
+    await this.getPolygonModels();
+    await this.getMapSettings();
+
     const map = new Map({
       layers: [
         new TileLayer({
@@ -160,45 +243,46 @@ class MapObject {
     map.addInteraction(modify);
     map.addLayer(this.drawVector);
 
-    return map;
+    this.map = map;
+    this.addInteractions('None');
+    await this.mapDataUpdate();
+
+    return this.map;
   }
 
-  private async getData() {
-    fetch('/MapDataJSON', { mode: 'cors' })
-      .then((response: Response) => response.json())
-      .then((data) => {
-        if (Object.keys(data).length !== 0) {
-          for (const key in data) {
-            this.udpJsonData[key] = {
-              id: data[key]['id'],
-              type: data[key]['type'],
-              parentID: data[key]['parentID'],
-              lat: data[key]['latitude'],
-              lon: data[key]['longitude'],
-              yaw: data[key]['yaw'],
-              yawOld: !!data[key]['yawOld'] ? data[key]['yawOld'] : 0,
-              altitude: data[key]['altitude'],
-            };
-          }
-        }
-      })
-      .catch((error: Error) => console.log(error.message));
+  private async getMapData() {
+    const data = await getMapData();
+
+    if (Object.keys(data).length !== 0) {
+      for (const key in data) {
+        this.udpJsonData[(key)] = {
+          id: data[key]['id'],
+          type: data[key]['type'],
+          parentID: data[key]['parentID'],
+          lat: data[key]['latitude'],
+          lon: data[key]['longitude'],
+          yaw: data[key]['yaw'],
+          yawOld: key in this.udpJsonData ? this.udpJsonData[key]['yawOld'] : 0,
+          altitude: data[key]['altitude'],
+        };
+      }
+    }
   }
 
   private async getMapSettings() {
-    const response = await fetch('/MapSettings', { mode: 'cors' });
-    this.mapSettings = await response.json();
+    this.mapSettings = await getMapSettings();
   }
 
   private async mapDataUpdate() {
-    await this.getData();
+
+    await this.getMapData();
 
     if (Object.keys(this.udpJsonData).length !== 0) {
-      this.updateVSFeatures({});
+      this.updateVSFeatures();
     }
 
-    if (Object.keys(this.draw_feature).length !== 0) {
-      this.geoJsonObject['features'].push(this.draw_feature);
+    if (Object.keys(this.drawFeature).length !== 0) {
+      this.geoJsonObject['features'].push(this.drawFeature);
     }
 
     const newFeature = new GeoJSON().readFeatures(this.geoJsonObject, {
@@ -209,10 +293,12 @@ class MapObject {
     this.vectorSource.clear();
     this.vectorSource.addFeatures(newFeature);
     this.setViewCenter(1, 1);
-    this.updatePolygonFeatures({}, {});
+    this.updatePolygonFeatures();
+
+    setTimeout(this.mapDataUpdate.bind(this), 10);
   }
 
-  private updateVSFeatures(settings: any) {
+  private updateVSFeatures() {
     this.geoJsonObject['features'] = [];
 
     const dataSortedForAltitude: dataSortedAltitudeType = {};
@@ -226,8 +312,6 @@ class MapObject {
     }
 
     const keys = Object.keys(dataSortedForAltitude).map(key => Number(key));
-
-    keys.sort((a, b) => a - b);
 
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
@@ -245,7 +329,7 @@ class MapObject {
           },
         });
 
-        const textStyle = new Text({
+        const textStyle = {
           font: '16px Calibri, sans-serif',
           fill: new Fill({ color: '#f00' }),
           stroke: new Stroke({
@@ -253,18 +337,20 @@ class MapObject {
             width: 2,
           }),
           text: String(dataSortedForAltitude[key].id),
-          offsetX: 100 * settings[dataSortedForAltitude[key]['type']]['size'],
-          offsetY: 100 * settings[dataSortedForAltitude[key]['type']]['size'], 
-        });
+        };
 
         try {
 
           this.styles[dataSortedForAltitude[key].id] = new Style({
-            text: textStyle,
+            text: new Text({
+              ...textStyle,
+              offsetX: 100 * this.markerSettings[dataSortedForAltitude[key]['type']]['size'],
+              offsetY: 100 * this.markerSettings[dataSortedForAltitude[key]['type']]['size'], 
+            }),
             image: new Icon({
-              opacity: settings[dataSortedForAltitude[key]['type']]['alpha'],                                  
-              scale: settings[dataSortedForAltitude[key]['type']]['size'],                     
-              src: '/public/images/' + settings[dataSortedForAltitude[key]['type']]['image'],
+              opacity: this.markerSettings[dataSortedForAltitude[key]['type']]['alpha'],                                  
+              scale: this.markerSettings[dataSortedForAltitude[key]['type']]['size'],                     
+              src: '/public/images/' + this.markerSettings[dataSortedForAltitude[key]['type']]['image'],
               rotation: dataSortedForAltitude[key]['yaw'] / 57.2958,
             }),
           });
@@ -272,7 +358,11 @@ class MapObject {
         } catch {
           
           this.styles[dataSortedForAltitude[key].id] = new Style({
-            text: textStyle,
+            text: new Text({
+              ...textStyle,
+              offsetX: 25,
+              offsetY: 25,
+            }),
             image: new Icon({
               opacity: 1,
               scale: 0.1,
@@ -340,38 +430,41 @@ class MapObject {
     });
   }
 
-  private updatePolygonFeatures(settings: any, models: any) {
+  private updatePolygonFeatures() {
     for (const key in this.udpJsonData) {
+  
       const marker = this.udpJsonData[key];
 
-      if (settings[marker.type].polygonModel !== '-' && marker.parentID === 0) {
+      const id = String(marker.id);
 
-        if (!this.realVectorSource.getFeatureById(marker.id)) {
-          const markerGeometry = new Polygon([models[settings[marker.type].polygonModel]]);
+      if (this.markerSettings[marker.type].polygonModel !== '-' && marker.parentID === 0) {
+
+        if (!this.realVectorSource.getFeatureById(id)) {
+          const markerGeometry = new Polygon([this.polygonModels[this.markerSettings[marker.type].polygonModel]]);
           const extent = markerGeometry.getExtent();
           const featureCenter = getCenter(extent);
 
           markerGeometry.rotate(180 / 57.3, featureCenter);
 
           const featureMarker = new Feature({
-            name: marker.id,
+            name: id,
             geometry: markerGeometry,
           });
 
-          featureMarker.setId(marker.id);
+          featureMarker.setId(id);
           this.realVectorSource.addFeature(featureMarker);
         } else {
-          this.moveAndRotatePolygonFeature(marker.id, marker.lon, marker.lat, marker.yaw);
+          this.moveAndRotatePolygonFeature(id, marker.lon, marker.lat, marker.yaw);
         }
       } else {
-        this.realVectorSource.removeFeature(this.realVectorSource.getFeatureById(marker.id) as Feature<Geometry>);
+        this.realVectorSource.removeFeature(this.realVectorSource.getFeatureById(id) as Feature<Geometry>);
 
         this.udpJsonData[marker.id].yawOld = 0;
       }
     }
   }
 
-  private moveAndRotatePolygonFeature(id: number, lat: number, lon: number, angle: number) {
+  private moveAndRotatePolygonFeature(id: string, lat: number, lon: number, angle: number) {
     const geomBox = this.realVectorSource.getFeatures();
 
     for (let geom = 0; geom < geomBox.length; geom++) {
@@ -385,9 +478,9 @@ class MapObject {
           const extent = geometry?.getExtent();
           const center = getCenter(extent as Extent);
 
-          const rotAngle = -(angle - this.udpJsonData.id.yawOld);
+          const rotAngle = -(angle - this.udpJsonData[id].yawOld);
           geometry?.rotate(rotAngle / 57.3, center);
-          this.udpJsonData.id.yawOld = angle;
+          this.udpJsonData[id].yawOld = angle;
 
           const tx = fromLonLat([lat, lon])[0] - center[0];
           const ty = fromLonLat([lat, lon])[1] - center[1];

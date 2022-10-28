@@ -1,9 +1,42 @@
-import { FC } from 'react';
+import { ChangeEvent, FC, useContext, useEffect } from 'react';
 import { ModalProps } from './modal.interface';
 import ModalOverlay from './ModalOverlay';
 import Image from '../../assets/images/helicopter.png';
+import Select from '../Select';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
+import { changeImage, changeModel, changeOpacity, changeSize, changeType } from '../../store/modelSettingsSlice';
+import { MapContext } from '../../App';
+import { getImageNames } from '../../api';
 
-const ModelSetting: FC< ModalProps> = ({ handleClose }) => {
+const ModelSetting: FC<ModalProps> = ({ handleClose }) => {
+
+  const map = useContext(MapContext);
+
+  const { type, image, size, opacity, model, imageNames, polygonModels } = useSelector((state: RootState) => state.modelSettings);
+  const dispatch = useDispatch();
+
+  const polygonModelNames = Object.keys(polygonModels);
+
+  const handleTypeChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    dispatch(changeType(Number(event.target.value)));
+  };
+
+  const handleImageChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    dispatch(changeImage(event.target.value));
+  };
+
+  const handleSizeChange = (event: ChangeEvent<HTMLInputElement>) => {
+    dispatch(changeSize(Number(event.target.value)));
+  };
+
+  const handleOpacityChange = (event: ChangeEvent<HTMLInputElement>) => {
+    dispatch(changeOpacity(Number(event.target.value)));
+  };
+
+  const handleModelChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    dispatch(changeModel(event.target.value));
+  };
 
   return (
     <ModalOverlay handleClose={handleClose}>
@@ -11,37 +44,26 @@ const ModelSetting: FC< ModalProps> = ({ handleClose }) => {
         <div className='table'></div>
         <div className='settings-item'>
           <span>Тип:</span>
-          <select>
-            <option>200</option>
-            <option>300</option>
-            <option>400</option>
-          </select>
+          <Select value={type} data={Array.from({length: 200}, (_, i) => i + 200)} noneField='' onChange={handleTypeChange} /> 
         </div>
         <div className='settings-item'>
           <span>Изображение:</span>
-          <select>
-            <option>Jet</option>
-            <option>Rocket</option>
-            <option>Ship</option>
-          </select>
+          <Select value={image} data={imageNames.data} noneField='' onChange={handleImageChange} />
         </div>
         <img src={Image} width={50} height={50} />
         <div className='settings-item'>
           <span>Размер:</span>
-          <input type='number' defaultValue={0.25} step={0.05} />
+          <input type='number' value={size} step={0.05} onChange={handleSizeChange} />
         </div>
         <div className='settings-item'>
           <span>Прозрачность:</span>
-          <input type='number' defaultValue={1} step={0.1} />
+          <input type='number' value={opacity} step={0.1} onChange={handleOpacityChange} />
         </div>
         <div className='settings-item'>
           <span>Модель:</span>
-          <select>
-            <option>Jet</option>
-            <option>Rocket</option>
-            <option>Ship</option>
-          </select>
+          <Select value={model} data={polygonModelNames} noneField='Нет' onChange={handleModelChange} />
         </div>
+        <button className='primary-btn sidebar-btn'>Сохранить модель</button>
       </div>
     </ModalOverlay>
   );
