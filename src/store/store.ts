@@ -3,16 +3,20 @@ import pinObjectsReducer from './pinObjectsSlice';
 import zoomLevelReducer from './zoomLevelSlice';
 import modelSettingsReducer from './modelSettingsSlice';
 import thunk from 'redux-thunk';
+import drawingSettingsSlice from './drawingSettingsSlice';
+import mapSlice from './mapSlice';
 
 export const reducer = combineReducers({
+  mapSlice,
   pinObjects: pinObjectsReducer,
   zoomLevel: zoomLevelReducer,
   modelSettings: modelSettingsReducer,
+  drawingSettings: drawingSettingsSlice,
 });
 
 export const store = configureStore({
   reducer,
-  middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(thunk),
+  middleware: (getDefaultMiddleware) => getDefaultMiddleware({ serializableCheck: false }).concat(thunk),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

@@ -1,5 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
+// import { store } from './store';
 
 export interface ZoomLevelState {
   level: number;
@@ -14,7 +15,8 @@ export const zoomLevelSlice = createSlice({
   initialState,
   reducers: {
     changeZoomLevel: (state, action: PayloadAction<number>) => {
-      state.level = action.payload
+      state.level = action.payload;
+      // store.getState().mapSlice.map.setZoomLevel(action.payload);
     },
   },
 });

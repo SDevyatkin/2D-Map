@@ -1,6 +1,24 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { polygonModelsType } from '../components/Map/Map.interface';
+import { saveMarkerSettings } from '../api';
+
+export interface IMarkerSettings {
+  [key: number]: {
+    image: string,
+    size: number,
+    alpha: number,
+    polygonModel: string,
+  },
+}
+
+export interface IMarkerSetting {
+  type: number;
+  image: string;
+  size: number;
+  opacity: number;
+  model: string;
+}
 
 export interface ModelSettingsState {
   type: number;
@@ -10,6 +28,7 @@ export interface ModelSettingsState {
   model: string;
   imageNames: string[];
   polygonModels: polygonModelsType;
+  markerSettings: IMarkerSettings;
 };
 
 export const initialState: ModelSettingsState = {
@@ -20,6 +39,7 @@ export const initialState: ModelSettingsState = {
   model: '',
   imageNames: [],
   polygonModels: {},
+  markerSettings: {},
 };
 
 export const modelSettingsSlice = createSlice({
@@ -53,10 +73,25 @@ export const modelSettingsSlice = createSlice({
     changePolygonModels: (state, action: PayloadAction<polygonModelsType>) => {
       state.polygonModels = action.payload;
     },
+
+    setMarkerSettings: (state, action: PayloadAction<IMarkerSettings>) => {
+      state.markerSettings = action.payload;
+    },
+
+    changeMarkerSettings: (state, action: PayloadAction<IMarkerSetting>) => {
+      state.markerSettings[action.payload.type] = {
+        image: action.payload.image,
+        size: action.payload.size,
+        alpha: action.payload.opacity,
+        polygonModel: action.payload.model ? action.payload.model : '-',
+      };
+
+      saveMarkerSettings(state.markerSettings);
+    },
   },
 });
 
-export const { changeType, changeImage, changeSize, changeOpacity,
-  changeModel, changeImageNames, changePolygonModels } = modelSettingsSlice.actions;
+export const { changeType, changeImage, changeSize, changeOpacity, changeModel, 
+  changeImageNames, changePolygonModels, setMarkerSettings, changeMarkerSettings } = modelSettingsSlice.actions;
 
 export default modelSettingsSlice.reducer;

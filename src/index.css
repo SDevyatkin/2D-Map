@@ -17,7 +17,7 @@ code {
 }
 
 :root {
-  --primary: #0f6674;
+  --primary: #46464B;
 }
 
 button {
@@ -156,7 +156,7 @@ input {
   width: 50%;
   height: 80%;
   background: none;
-  border: 10px solid rgba(15, 102, 116, 0.7);
+  border: 10px solid rgba(102, 103, 108, 0.8);
   border-radius: 4%;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
   z-index: 2;
@@ -170,16 +170,15 @@ input {
   width: 100%;
   height: 100%;
   padding: 50px 20px 20px;
-  background-color: rgba(15, 102, 116, 0.7);
+  background-color: rgba(102, 103, 108, 0.8);
   border-radius: 3%;
   overflow-y: scroll;
+  overflow-x: hidden;
   z-index: 3;
 }
 
 .table {
   width: 100%;
-  height: 250px;
-  background-color: #445b5e;
   border: 1px solid #000;
 }
 
@@ -286,4 +285,15 @@ input {
 
 .canvas-create * {
   width: 50%;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 10% 40% 10% 10% 30%;
+}
+
+.table-row div {
+  padding: 10px;
+  text-align: center;
+  border: 1px solid #000;
 }

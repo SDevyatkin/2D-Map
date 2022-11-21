@@ -2,33 +2,22 @@ import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 
 export interface PinObjectsState {
-  data: {
-    [key: number]: string
-  },
-  selected: number | null,
+  objects: number[],
+  selected: number | 'None',
 }
 
 const initialState: PinObjectsState = {
-  data: {},
-  selected: null,
+  objects: [],
+  selected: 'None',
 };
 
 export const pinObjectsSlice = createSlice({
   name: 'pinObjects',
   initialState,
   reducers: {
-    changePinObjects: (state, action: PayloadAction<[number, string]>) => {
+    changePinObjects: (state, action: PayloadAction<number[]>) => {
 
-      const key = action.payload[0];
-      const value = action.payload[1];
-
-      return {
-        selected: state.selected,
-        data: {
-          ...state.data,
-          key: value,
-        }
-      };
+      state.objects = action.payload;
     },
 
     selectPinObject: (state, action: PayloadAction<number>) => {

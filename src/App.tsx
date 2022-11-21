@@ -1,39 +1,37 @@
 import { createContext, MouseEvent, useEffect, useState } from 'react';
-import { Context } from 'vm';
+import { useDispatch, useSelector } from 'react-redux';
 import Map2D from './components/Map/Map';
+import MapCanvas from './components/Map/MapCanvas';
 import MapObject from './components/Map/MapObject';
 import Panel from './components/Panel';
 import Sidebar from './components/Sidebar';
+import { setMap } from './store/mapSlice';
+import { changePinObjects } from './store/pinObjectsSlice';
+import { RootState } from './store/store';
 import { useData } from './useData';
-
-export const MapContext = createContext<MapObject>(new MapObject());
 
 const App = (): JSX.Element => {
 
-  let CanvasMap: MapObject | undefined = undefined
+  const dispatch = useDispatch();
+  const { Map } = useSelector((state: RootState) => ({ Map: state.mapSlice.map }));
 
-  const [Map, setMap] = useState<MapObject | undefined>();
   const [sidebarOpened, setSidebarOpened] = useState<boolean>(false);
 
-  const { } = useData();
+  const {  } = useData();
 
   useEffect(() => {
-    if (CanvasMap == undefined) return;
-    CanvasMap = new MapObject()    
-    setMap(CanvasMap);
-  }, [])
+    dispatch(changePinObjects(Map.getPinObjects().map(item => Number(item))));
+  }, []);
   
   const handleSidebar = (event: MouseEvent) => {
     setSidebarOpened(state => !state);
   };
 
   return (
-    <>
-      <div>
-        <Panel handleSidebar={handleSidebar} />
-        <Sidebar opened={sidebarOpened} handleSidebar={handleSidebar} />
-      </div>
-    </>
+    <div>
+      <Panel handleSidebar={handleSidebar} />
+      <Sidebar opened={sidebarOpened} handleSidebar={handleSidebar} />
+    </div>
   );
 }
 

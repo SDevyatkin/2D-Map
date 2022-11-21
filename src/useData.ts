@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { getImageNames, getMapConfig, getMarkerSettings, getPolygonModels } from './api';
-import { changeImageNames, changePolygonModels } from './store/modelSettingsSlice';
+import { changeImageNames, setMarkerSettings, changePolygonModels } from './store/modelSettingsSlice';
 
 export const useData = () => {
 
@@ -18,8 +18,11 @@ export const useData = () => {
       .then((data) => {
         dispatch(changePolygonModels(data));
       });
-    markerSettings = getMarkerSettings();
+    markerSettings = getMarkerSettings()
+      .then((data) => {
+        dispatch(setMarkerSettings(data));
+      });
   }, []);
-  
+
   return { mapConfig, imageNames, polygonModels, markerSettings };
 };

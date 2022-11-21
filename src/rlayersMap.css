@@ -1,0 +1,39 @@
+.map {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+}
+
+.customControl {
+  position: absolute;
+  top: 2.5em;
+  right: 1.5em;
+}
+
+.fullscreenControl {
+  position: absolute;
+  top: 4.5em;
+  right: 1.5em;
+}
+
+.fullscreenControl:-webkit-full-screen
+.fullscreenControl:-ms-fullscreen,
+.fullscreenControl:fullscreen {
+  width: 100%;
+  height: 100%;
+}
+
+.overlay {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-select: none;
+    pointer-events: none;
+    position: absolute;
+    width: max-content;
+    background-color: white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #cccccc;
+}

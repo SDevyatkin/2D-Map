@@ -119,10 +119,10 @@ class DetectPolygonManager {
 
   public addPolygon() {
     const newPolygon: number[][] = [
-      [50, 100],
-      [150, 100],
-      [150, 200],
-      [50, 200],
+      [250, 300],
+      [350, 300],
+      [350, 400],
+      [250, 400],
     ];
     this.polygonsList.push(newPolygon);
     this.centersList.push(this.calculatePolygonCenter(newPolygon));
@@ -177,6 +177,10 @@ class DetectPolygonManager {
 
   public getPolygonPoints() {
     return this.polygonsList[0];
+  }
+
+  public getPolygonCenter() {
+    return this.centersList[0];
   }
 
   private clearCanvas() {
@@ -263,6 +267,8 @@ class DetectPolygonManager {
   public setGridStep(size: number) {
     this.gridStep = size;
     this.render();
+    this.drawPolygons();
+    this.drawCenters();
   }
 
   private drawMargin() {
@@ -337,12 +343,14 @@ class DetectPolygonManager {
 
   private addPoint(polygonId: number, pointId: number, x: number, y: number) {
     this.polygonsList[polygonId].splice(pointId, 0, [x, y]);
+    this.calculatePolygonCenter(this.polygonsList[polygonId]);
     this.render();
   }
 
   private removePoint(polygonId: number, pointId: number) {
     if (this.polygonsList[polygonId].length < 4) return;
     this.polygonsList[polygonId].splice(pointId, 1);
+    this.calculatePolygonCenter(this.polygonsList[polygonId]);
     this.render();
   }
 

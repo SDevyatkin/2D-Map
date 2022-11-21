@@ -24,7 +24,7 @@ import { Geometry, MultiLineString, Polygon } from 'ol/geom';
 import { Extent, getCenter } from 'ol/extent';
 
 import { GreatCircle } from 'arc';
-import { getMapConfig, getMapData, getMapSettings, getMarkerSettings, getPolygonModels } from '../../api';
+import { getMapConfig, getFeaturesData, getMapSettings, getMarkerSettings, getPolygonModels } from '../../api';
 
 // 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
 
@@ -251,7 +251,7 @@ class MapObject {
   }
 
   private async getMapData() {
-    const data = await getMapData();
+    const data = await getFeaturesData();
 
     if (Object.keys(data).length !== 0) {
       for (const key in data) {

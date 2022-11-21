@@ -4,6 +4,7 @@ import App from './App';
 import { StrictMode } from 'react';
 import { Provider } from 'react-redux';
 import { store } from './store/store';
+import RLayersMap from './RLayersMap';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -12,6 +13,7 @@ root.render(
   <StrictMode>
     <Provider store={store} >
       <App />
+      {/* <RLayersMap /> */}
     </Provider>
   </StrictMode>
 );

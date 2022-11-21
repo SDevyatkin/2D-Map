@@ -1,3 +1,5 @@
+import { IMarkerSettings } from './store/modelSettingsSlice';
+
 const BASE_URL = 'http://localhost:8080';
 
 export const getMapConfig = async () => {
@@ -8,12 +10,21 @@ export const getMapConfig = async () => {
   return mapConfig;
 };
 
-export const getMapData = async () => {
+export const getFeaturesData = async () => {
 
   const response = await fetch(`${BASE_URL}/MapData`, { mode: 'cors' });
   const mapData = await response.json();
 
   return mapData;
+
+  // let data;
+
+  // ws.onmessage = (event) => {
+  //   data = event.data;
+  // };
+
+
+  // return data;
 };
 
 export const getMapSettings = async () => {
@@ -27,9 +38,9 @@ export const getMapSettings = async () => {
 export const getImageNames = async () => {
 
   const response = await fetch(`${BASE_URL}/ImageNames`, { mode: 'cors' });
-  const imageNames = response.json();
+  const imageNames = await response.json();
   
-  return imageNames;
+  return imageNames.data;
 };
 
 export const getPolygonModels = async () => {
@@ -41,9 +52,46 @@ export const getPolygonModels = async () => {
 };
 
 export const getMarkerSettings = async () => {
+  const editedMarkerSettings: IMarkerSettings = {};
 
   const response = await fetch(`${BASE_URL}/MarkerSettings`, { mode: 'cors' });
   const markerSettings = await response.json();
 
-  return markerSettings.data;
+  Object.keys(markerSettings)
+    .map(key => {
+      editedMarkerSettings[Number(key)] = {
+        image: markerSettings[key].image,
+        size: Number(markerSettings[key].size),
+        alpha: Number(markerSettings[key].alpha),
+        polygonModel: markerSettings[key].polygonModel,
+      };
+    });
+
+  return editedMarkerSettings;
+};
+
+export const saveNewPolygonModel = async (modelName: string, modelPoints: number[][]) => {
+  const response = await fetch(`${BASE_URL}/client/SaveNewModel`, {
+    method: 'POST',
+    mode: 'cors',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ [modelName]: modelPoints }),
+  });
+
+  return response.status;
+};
+
+export const saveMarkerSettings = async (settings: IMarkerSettings) => {
+  const response = await fetch(`${BASE_URL}/client/SaveMarkerSettings`, {
+    method: 'POST',
+    mode: 'cors',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(settings),
+  });
+
+  return response.status;
 };

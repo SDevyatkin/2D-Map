@@ -1,4 +1,7 @@
-import { FC } from 'react';
+import { ChangeEvent, FC } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { selectDrawingMode } from '../../store/drawingSettingsSlice';
+import { RootState } from '../../store/store';
 import Select from '../Select';
 
 const data = [
@@ -10,16 +13,29 @@ const data = [
 
 const DrawingPanel: FC = () => {
 
+  const dispatch = useDispatch();
+
+  const { Map, drawingModes, selectedDrawingMode } = useSelector((state: RootState) => ({
+    Map: state.mapSlice.map,
+    drawingModes: state.drawingSettings.options,
+    selectedDrawingMode: state.drawingSettings.selected,
+  }));
+
+  const onChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    dispatch(selectDrawingMode(event.target.value));
+    Map.changeInteractions(event.target.value);
+  };
+
   return (
     <div className='sidebar-panel'>
       <h2>Редактор</h2>
       <div className='selector'>
         <span>Режим</span>
-        <Select data={data} noneField='Выкл' />
+        <Select data={Object.entries(drawingModes)} value={selectedDrawingMode} noneField='Выкл' onChange={onChange} />
       </div>
       <div className='buttons'> 
-        <button className='primary-btn sidebar-btn'>очистить</button>
-        <button className='primary-btn sidebar-btn'>построить маршрут</button>
+        <button className='primary-btn sidebar-btn' onClick={() => Map.cleanDrawSource()}>очистить</button>
+        <button className='primary-btn sidebar-btn' onClick={() => Map.drawLine()}>построить маршрут</button>
       </div>
     </div>
   );
