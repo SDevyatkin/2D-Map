@@ -2,6 +2,7 @@
   box-sizing: border-box;
 }
 
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -36,20 +37,31 @@ input {
 }
 
 #map {
+  position: relative;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: stretch;
   width: 100vw; 
   height: 95vh;
   bottom: 0;
+  border: 3px solid #000;
+  overflow: hidden;
 }
 
 .header {
-  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-around;
+  justify-content: space-between;
   height: 5vh;
   top: 0;
   width: 100vw;
+  padding: 0 20px;
   background-color: var(--primary);
+}
+
+.header-btns {
+  display: flex;
+  gap: 10px;
 }
 
 .logo {
@@ -61,11 +73,7 @@ input {
   font-weight: bolder;
   border: 2px solid #fff;
   padding: 5px 10px;
-}
-
-.header-btn {
-  position: absolute;
-  left: 25px;
+  text-transform: uppercase;
 }
 
 .close-btn {
@@ -79,35 +87,36 @@ input {
 }
 
 .sidebar {
-  position: relative;
-  position: fixed;
-  display: flex;
+  position: absolute;
+  display: none;
   gap: 70px;
   flex-direction: column;
-  top: 0;
-  bottom: 0;
-  left: -400px;
-  width: 400px;
+  left: 0;
+  width: 350px;
+  height: 100%;
   padding: 40px 20px;
   background-color: var(--primary);
   box-shadow: 10px 0 20px rgba(0,0,0,0.4);
-  z-index: 4;
+  z-index: 2;
   transition: left .3s ease-in-out;
 }
 
 .sidebar-active {
-  left: 0px;
+  display: flex;
 }
 
 .sidebar-panel {
   display: flex;
   color: #fff;
   flex-direction: column;
+  align-items: center;
   gap: 20px;
 }
 
 .sidebar-panel h2 {
   display: block;
+  width: 100%;
+  text-align: center;
   margin: 0;
   padding-bottom: 5px;
   font-weight: 300;
@@ -117,6 +126,9 @@ input {
 .selector {
   position: relative;
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
   justify-content: space-between;
   padding: 0 50px 0 20px;
 }
@@ -130,6 +142,20 @@ input {
 .sidebar-btn {
   background-color: #445b5e;
   text-transform: uppercase;
+}
+
+.toggle-sidebar-btn {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 30px;
+  left: 0;
+  top: 50%;
+  font-size: 20px;
+  background-color: #46464B;
+  border-radius: 0 3px 3px 0;
 }
 
 .update-btn {
@@ -146,9 +172,10 @@ input {
   display: flex;
   justify-content: center;
   align-items: center;
-  inset: 0;
+  width: 100vw;
+  height: 95vh;
   background-color: rgba(0, 0, 0, 0.4);
-  z-index: 2;
+  z-index: 3;
 }
 
 .modal-helper {
@@ -163,18 +190,60 @@ input {
 }
 
 .modal {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: start;
   align-items: center;
-  width: 100%;
-  height: 100%;
+  width: 50%;
+  min-width: 1000px;
+  height: 80%;
   padding: 50px 20px 20px;
   background-color: rgba(102, 103, 108, 0.8);
+  border: 5px solid rgba(102, 103, 108, 0.8);
   border-radius: 3%;
   overflow-y: scroll;
   overflow-x: hidden;
-  z-index: 3;
+  z-index: 4;
+}
+
+.mini-modal {
+  width: 300px;
+  height: auto;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: start;
+  padding: 30px 20px;
+}
+
+.mini-modal-label {
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+.mini-modal .buttons {
+  font-size: 10px;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkbox {
+  display: flex;
+  padding: 0 20px;
+  align-items: center;
+  color: #fff;
+}
+
+.checkbox input {
+  height: 15px;
+  width: 15px;
+  margin-right: 15px;
+}
+
+.checkbox label {
+  user-select: none;
 }
 
 .table {
@@ -296,4 +365,44 @@ input {
   padding: 10px;
   text-align: center;
   border: 1px solid #000;
+}
+
+.feature-info-modal {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  color: #fff;
+  bottom: 100px;
+  right: 50px;
+  width: 200px;
+  height: auto;
+  padding: 30px 10px;
+  background-color: rgba(70, 70, 75, 0.8);
+  border-radius: 5px;
+}
+
+.new-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  height: 95vh;
+  width: 50px;
+  padding-top: 10px;
+  background-color: #46464B;
+}
+
+.new-sidebar-btn {
+  width: 50px;
+  height: 50px;
+}
+
+.new-sidebar-btn:hover {
+  background-color: #3f3f4b;
+}
+
+.new-sidebar-btn img {
+  width: 40px;
+  height: 40px;
 }

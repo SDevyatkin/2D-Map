@@ -8,7 +8,7 @@ interface SelectProps extends DetailedHTMLProps<SelectHTMLAttributes<HTMLSelectE
 const Select: FC<SelectProps> = ({ data, noneField, value, onChange }) => {
 
   return (
-    <select value={value} onChange={onChange}>
+    <select style={{ marginBottom: '20px' }} value={value} onChange={onChange}>
       {
         noneField && <option value='None'>{ noneField }</option>
       }

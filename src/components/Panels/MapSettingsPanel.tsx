@@ -9,11 +9,11 @@ import Select from '../Select';
 const MapSettingsPanel: FC = () => {
 
   const { Map, pinObjects, selectedPinObject, _pinObjects } = useSelector((state: RootState) => ({
-    Map: state.mapSlice.map,
+    Map: state.Map.map,
     pinObjects: state.pinObjects.objects,
     selectedPinObject: state.pinObjects.selected,
     zoomLevel: state.zoomLevel.level,
-    _pinObjects: state.mapSlice.map?.getPinObjects(),
+    _pinObjects: state.Map.map?.getPinObjects(),
   }));
 
 
@@ -34,7 +34,7 @@ const MapSettingsPanel: FC = () => {
 
   return (
     <div className='sidebar-panel'>
-      <h2>Карта</h2>
+      <h2>Настройки вида карты</h2>
       <div className='selector'>
         <span>Центрирование</span>
         <Select value={selectedPinObject} data={pinObjects} noneField='Свободно' onChange={handlePinObjectChange} />
@@ -43,6 +43,10 @@ const MapSettingsPanel: FC = () => {
       <div className='selector'>
         <span>Масштаб</span>
         <Select data={Array.from({length: 30}, (_, i) => i + 1)} noneField='' onChange={handleZoomLevelChange} />
+      </div>
+      <div className='checkbox'>
+        <input id='lock-view' type='checkbox' defaultChecked={true} />
+        <label htmlFor='lock-view'>Заблокировать вид</label>
       </div>
       <div className='buttons'>
         <button className='primary-btn sidebar-btn'>сохранить настройки</button>

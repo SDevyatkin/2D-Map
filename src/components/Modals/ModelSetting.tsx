@@ -1,4 +1,4 @@
-import { ChangeEvent, FC, useContext, useEffect } from 'react';
+import { ChangeEvent, FC, MouseEvent, useContext, useEffect } from 'react';
 import { ModalProps } from './modal.interface';
 import ModalOverlay from './ModalOverlay';
 import Select from '../Select';
@@ -41,7 +41,7 @@ const ModelSetting: FC<ModalProps> = ({ handleClose }) => {
 
   return (
     <ModalOverlay handleClose={handleClose}>
-      <div className='modal'>
+      <div className='modal' onClick={(event: MouseEvent) => event.stopPropagation()}>
         <div className='table'>
           {
             Object.entries(markerSettings).map((data, index) => <TableRow key={data[0]} data={data} index={index}/>)
@@ -69,6 +69,7 @@ const ModelSetting: FC<ModalProps> = ({ handleClose }) => {
           <Select value={model} data={polygonModelNames} noneField='Нет' onChange={handleModelChange} />
         </div>
         <button className='primary-btn sidebar-btn' onClick={saveModelSettings}>Сохранить модель</button>
+        <button className='primary-btn close-btn' onClick={handleClose}>+</button>
       </div>
     </ModalOverlay>
   );

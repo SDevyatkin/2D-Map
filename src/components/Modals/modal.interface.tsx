@@ -5,6 +5,7 @@ export interface ModalProps {
 }
 
 export interface OverlayProps {
+  mini?: boolean;
   handleClose: () => void;
   children: ReactNode;
 }

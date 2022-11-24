@@ -64,6 +64,8 @@ class MapCanvas {
   private lockedView: boolean = false;
   private zoomLevel: number = 3;
   private currentCenter: [number, number] = [0, 0];
+  private featureInfoID: number = -1;
+  private featureInfo: mapObjectType | null = null;
   private userPoints: Coordinate[] = [];
   private draw: Draw = new Draw({
     source: this.DrawLayerSource,
@@ -82,6 +84,15 @@ class MapCanvas {
 
     this.map.addLayer(this.PolygonLayer);
     this.PolygonLayer.setSource(this.PolygonsLayerSource);
+    this.PolygonLayer.setStyle(new Style({
+      stroke: new Stroke({
+        color: 'red',
+        width: 3,
+      }),
+      fill: new Fill({
+        color: 'rgba(255, 0, 0, 0.4)',
+      }),
+    }));
 
     this.map.addLayer(this.DrawLayer);
     this.DrawLayer.setSource(this.DrawLayerSource);
@@ -104,6 +115,14 @@ class MapCanvas {
     // this.ObjectsLayer.setStyle((feature) => this.styles[feature.get('type')]);
 
     this.getMarkerSettings();
+
+    this.map.on('click', (event) => {
+      const feature = this.map.forEachFeatureAtPixel(event.pixel, (f) => f);
+      
+      if (feature) {
+        this.featureInfoID = feature.getId() as number;
+      }
+    });
   }
 
   public setZoomLevel (level: number) {
@@ -124,6 +143,13 @@ class MapCanvas {
 
   public cleanDrawSource() {
     this.DrawLayerSource.clear();
+  }
+
+  public getFeatureInfo() {
+    if (this.featureInfoID !== -1) {
+      this.featureInfo = this.FeaturesObject[this.featureInfoID].featureParams;
+    }
+    return this.featureInfo;
   }
 
   public drawLine() {
@@ -226,6 +252,8 @@ class MapCanvas {
           const newFeature = new Feature({
             geometry: new Point(fromLonLat([features[key].longitude, features[key].latitude])),
           });
+
+          newFeature.setId(features[key].id);
 
           const settings = this.MarkersObject[features[key].type];
 
@@ -356,8 +384,7 @@ class MapCanvas {
 
         if (this.MarkersObject[featureParams.type].polygonModel !== '-' && featureParams.parentID === 0) {
 
-          if (!this.PolygonsLayerSource.getFeatureById(featureParams.id)) {
-            console.log(polygons[this.MarkersObject[featureParams.type].polygonModel]);
+          if (!this.PolygonsLayerSource.getFeatureById(featureParams.id)) {;
             const polygon = new Polygon([polygons[this.MarkersObject[featureParams.type].polygonModel]]);
 
             const polygonFeature = new Feature({
@@ -366,6 +393,16 @@ class MapCanvas {
             });
 
             polygonFeature.setId(featureParams.id);
+
+            polygonFeature.setStyle(new Style({
+              stroke: new Stroke({
+                color: 'black',
+                width: 3,
+              }),
+              fill: new Fill({
+                color: 'rgba(0, 0, 0, 0.1)',
+              }),
+            }));
 
             this.PolygonsObject[featureParams.id] = {
               polygon: polygons[this.MarkersObject[featureParams.type].polygonModel],
@@ -390,8 +427,13 @@ class MapCanvas {
   private movePolygonLayerFeature(id: number, lon: number, lat: number) {
     const feature = this.PolygonsObject[id].feature;
 
-    const geometry = feature.getGeometry() as Point;
-    geometry.setCoordinates(fromLonLat([lon, lat]), geometry.getLayout());
+    const geometry = feature.getGeometry() as Polygon;
+    const center = [geometry.getFlatCoordinates()[0], geometry.getFlatCoordinates()[1]];
+    
+    const tx = fromLonLat([lon, lat])[0] - center[0];
+    const ty = fromLonLat([lon, lat])[1] - center[1];
+
+    geometry.translate(tx, ty);
   }
 
   private rotatePolygonLayerFeature(id: number, yaw: number) {
@@ -416,6 +458,35 @@ class MapCanvas {
       this.map.getView().setCenter(this.currentCenter);
       this.map.getView().setZoom(this.zoomLevel);
     }
+  }
+
+  private getXYZ(coords: [number, number, number]) {
+
+    const [lat, lon, alt] = coords;
+    const [a, b] = [6378137, 6356752.314245];
+
+    const e = 1 - (b ** 2 / a ** 2);
+    const N = a / Math.sqrt(1 - e * Math.pow(Math.sin(lat), 2));
+
+    const X = (N + alt) * Math.cos(lat) * Math.cos(lon);
+    const Y = (N + alt) * Math.cos(lat) * Math.sin(lon);
+    const Z = ((b ** 2 / a ** 2) * N + alt) * Math.sin(lat);
+
+    return [X, Y, Z];
+  }
+
+  // [LAT, LON, ALT]
+  public calculateDistance(coords1: [number, number, number], coords2: [number, number, number]) {
+
+    const [X1, Y1, Z1] = this.getXYZ(coords1);
+    const [X2, Y2, Z2] = this.getXYZ(coords2);
+
+    // const [X1, Y1, Z1] = [1 * 111134.861111 , 1 * 111321.377778, 1];
+    // const [X2, Y2, Z2] = [2 * 111134.861111 , 20 * 111321.377778, 1];
+
+    const distance = Math.pow((X2 - X1) ** 3 + (Y2 - Y1) ** 3 + (Z2 - Z1) ** 3, (1 / 3));
+
+    return distance;    
   }
 }
 

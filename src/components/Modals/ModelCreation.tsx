@@ -1,4 +1,5 @@
-import { ChangeEvent, FC, useEffect, useState } from 'react';
+import { Tooltip } from '@mui/material';
+import { ChangeEvent, FC, MouseEvent, useEffect, useState } from 'react';
 import { saveNewPolygonModel } from '../../api';
 import { DetectPolygonManager } from '../../DetectPolygonManager';
 import { ModalProps } from './modal.interface';
@@ -47,23 +48,28 @@ const ModelCreation: FC<ModalProps> = ({ handleClose }) => {
 
   return (
     <ModalOverlay handleClose={handleClose} >
-      <div className='modal'>
+      <div className='modal' onClick={(event: MouseEvent) => event.stopPropagation()}>
         <canvas id='polygonManager' width={900} height={700} />
         <div className='canvas-settings'>
           <div className='canvas-slider'>
             <input type='range' id='gridStep' name='volume' min={10} max={80} value={pixelWidth} step={10} onChange={handleRange} />
             <span>Ширина клетки в пикселях {pixelWidth}</span>
           </div>
-          <div className='canvas-slider'>
-            <input type='range' id='meterSize' name='meterSize' min={1} max={1000} value={meterWidth} step={1} onChange={handleRange} />
-            <span>Ширина клетки в метрах {meterWidth}</span>
-          </div>
+          <Tooltip
+            title='Количество метров содержащихся в одной клетке поля.'
+          >
+            <div className='canvas-slider'>
+              <input type='range' id='meterSize' name='meterSize' min={1} max={1000} value={meterWidth} step={1} onChange={handleRange} />
+              <span>Ширина клетки в метрах {meterWidth}</span>
+            </div>
+          </Tooltip>
           <div className='canvas-create'>
             <span>Имя модели</span>
             <input type='text' value={modelName} onChange={handleModelName} />
             <button className='primary-btn sidebar-btn' onClick={saveModel} disabled={!modelName}>Сохранить</button>
           </div>
         </div>
+        <button className='primary-btn close-btn' onClick={handleClose}>+</button>
       </div>
     </ModalOverlay>
   );

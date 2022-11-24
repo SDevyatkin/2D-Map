@@ -3,15 +3,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { selectDrawingMode } from '../../store/drawingSettingsSlice';
 import { RootState } from '../../store/store';
 import Select from '../Select';
+import ModalOverlay from './ModalOverlay';
 
-const data = [
-  ['LineString', 'Непрерывная линия'],
-  ['Polygon', 'Зона'],
-  ['Circle', 'Окружность'],
-  ['Point', 'Точка'],
-];
-
-const DrawingPanel: FC = () => {
+const DrawingModal: FC<{ handleClose: () => void }> = ({ handleClose }) => {
 
   const dispatch = useDispatch();
 
@@ -26,21 +20,18 @@ const DrawingPanel: FC = () => {
     Map.changeInteractions(event.target.value);
   };
 
-  console.log((Map.calculateDistance([5, 5, 0], [10, 10, 0]) / 1000).toFixed(3));
-
   return (
-    <div className='sidebar-panel'>
-      <h2>Настройки редактирования</h2>
-      <div className='selector'>
-        <span>Режим</span>
+    <ModalOverlay mini={true} handleClose={handleClose}>
+      <div className='modal mini-modal'>
+        <div className='mini-modal-label'>Режим</div>
         <Select data={Object.entries(drawingModes)} value={selectedDrawingMode} noneField='Выкл' onChange={onChange} />
+        <div className='buttons'> 
+          <button className='primary-btn sidebar-btn' onClick={() => Map.cleanDrawSource()}>очистить</button>
+          <button className='primary-btn sidebar-btn' onClick={() => Map.drawLine()}>построить маршрут</button>
+        </div>
       </div>
-      <div className='buttons'> 
-        <button className='primary-btn sidebar-btn' onClick={() => Map.cleanDrawSource()}>очистить</button>
-        <button className='primary-btn sidebar-btn' onClick={() => Map.drawLine()}>построить маршрут</button>
-      </div>
-    </div>
+    </ModalOverlay>
   );
 };
 
-export default DrawingPanel;
+export default DrawingModal;

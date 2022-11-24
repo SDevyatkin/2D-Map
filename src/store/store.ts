@@ -4,10 +4,10 @@ import zoomLevelReducer from './zoomLevelSlice';
 import modelSettingsReducer from './modelSettingsSlice';
 import thunk from 'redux-thunk';
 import drawingSettingsSlice from './drawingSettingsSlice';
-import mapSlice from './mapSlice';
+import mapReducer from './mapSlice';
 
 export const reducer = combineReducers({
-  mapSlice,
+  Map: mapReducer,
   pinObjects: pinObjectsReducer,
   zoomLevel: zoomLevelReducer,
   modelSettings: modelSettingsReducer,
