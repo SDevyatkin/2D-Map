@@ -1,4 +1,4 @@
-import net from 'net';
+import net, { SocketAddress } from 'net';
 import config from 'config';
 import dgram from 'dgram';
 import fs from 'fs';
@@ -114,3 +114,16 @@ wsServer.on('connection', (socket) => {
     
   });
 });
+
+let block = true
+
+function sendData(freq: number){
+  if (block) return;
+
+  // send
+  block = true
+
+  setTimeout(() => {
+    block = false
+  }, freq);
+}
