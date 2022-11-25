@@ -20,7 +20,7 @@ const server = net.createServer();
 server.listen(PORT, HOST, () => console.log(`TCP Server running on port ${PORT}`));
 
 server.on('connection', (socket) => {
-  console.log(`Подключен: ${socket.remoteAddress}:${socket.remotePort}`);
+  console.log(`Подключен ${socket.remoteAddress}:${socket.remotePort}`);
 
   sockets.push(socket);
 
@@ -32,7 +32,7 @@ server.on('connection', (socket) => {
 
       const kills = TCPEvents.events.kill;
 
-      // kills.forEach((item) => );
+      kills.forEach((item) => jsonData[item].parentID = 'death');
     } catch (error) {
       console.log(`Некорректный запрос на удаление: ${error.message}`);
     }
@@ -108,7 +108,9 @@ setTimeout(getData, 0);
 const wsServer = new ws.Server({ port: 3001 }, () => console.log(`Server started on port 3001`));
 
 wsServer.on('connection', (socket) => {
-  socket.on('message', () => {
+  console.log('client connected');
+
+  socket.on('message', (data) => {
     
-  })
-})
+  });
+});

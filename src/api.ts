@@ -16,15 +16,6 @@ export const getFeaturesData = async () => {
   const mapData = await response.json();
 
   return mapData;
-
-  // let data;
-
-  // ws.onmessage = (event) => {
-  //   data = event.data;
-  // };
-
-
-  // return data;
 };
 
 export const getMapSettings = async () => {
@@ -94,4 +85,18 @@ export const saveMarkerSettings = async (settings: IMarkerSettings) => {
   });
 
   return response.status;
+};
+
+export const getFeaturesDataWS = async () => {
+  const socket = new WebSocket('ws://localhost:3001/MapData');
+
+  return socket;
+
+  let data;
+
+  socket.onmessage = (event) => {
+    data = event.data;
+  };  
+
+  return data;
 };
