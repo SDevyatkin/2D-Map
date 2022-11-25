@@ -15,6 +15,10 @@ const FeatureInfoModal: FC = () => {
     setInterval(() => setInfo(Map.getFeatureInfo()), 20)
   });
   
+  const handleClose = () => {
+    Map.setFeatureInfoID();
+  };
+
   return createPortal(
     <>
       {
@@ -25,6 +29,7 @@ const FeatureInfoModal: FC = () => {
             <div>Широта: {info.latitude.toFixed(3)}</div>
             <div>Долгота: {info.longitude.toFixed(3)}</div>
             <div>Высота: {info.yaw.toFixed(3)}</div>
+            <button className='close-btn' onClick={handleClose}>+</button>
           </div>
       }
     </>,

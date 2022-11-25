@@ -8,21 +8,29 @@ import Select from '../Select';
 
 const MapSettingsPanel: FC = () => {
 
-  const { Map, pinObjects, selectedPinObject, _pinObjects } = useSelector((state: RootState) => ({
+  const [pinObjects, setPinObjects] = useState<number[]>([]);
+
+  const { Map, selectedPinObject, zoomLevel, viewLocked } = useSelector((state: RootState) => ({
     Map: state.Map.map,
-    pinObjects: state.pinObjects.objects,
     selectedPinObject: state.pinObjects.selected,
     zoomLevel: state.zoomLevel.level,
-    _pinObjects: state.Map.map?.getPinObjects(),
+    viewLocked: state.Map.map.getViewLocked()
   }));
 
+  useEffect(() => { setInterval(() => setPinObjects(Map.getPinObjects()), 20) });
 
   const dispatch = useDispatch();
 
   const handlePinObjectChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value; 
 
-    dispatch(selectPinObject(value === null ? value : Number(value)))
+    dispatch(selectPinObject(value === null ? value : Number(value)));
+    
+    if (viewLocked) {
+      Map.setCenteredObject(value === null ? value : Number(value));
+    } else {
+      Map.translateView(value === null ? value : Number(value));
+    }
   };
 
   const handleZoomLevelChange = (event: ChangeEvent<HTMLSelectElement>) => {
@@ -30,26 +38,29 @@ const MapSettingsPanel: FC = () => {
     Map.setZoomLevel(Number(event.target.value));
   };
 
+  const handleViewLocked = (event: ChangeEvent<HTMLInputElement>) => {
+    Map.setViewLocked(event.target.checked);
+  };
+
   // console.log(_pinObjects);
 
   return (
     <div className='sidebar-panel'>
-      <h2>Настройки вида карты</h2>
+      <h2>Вид карты</h2>
       <div className='selector'>
         <span>Центрирование</span>
         <Select value={selectedPinObject} data={pinObjects} noneField='Свободно' onChange={handlePinObjectChange} />
-        <button className='primary-btn sidebar-btn update-btn'>{'\u21BA'}</button>
       </div>
       <div className='selector'>
         <span>Масштаб</span>
-        <Select data={Array.from({length: 30}, (_, i) => i + 1)} noneField='' onChange={handleZoomLevelChange} />
+        <Select data={Array.from({length: 30}, (_, i) => i + 1)} value={zoomLevel} noneField='' onChange={handleZoomLevelChange} />
       </div>
-      <div className='checkbox'>
-        <input id='lock-view' type='checkbox' defaultChecked={true} />
-        <label htmlFor='lock-view'>Заблокировать вид</label>
+      <div className='panel-checkbox '>
+        <label htmlFor='lock-view'>Блокировать вид</label>
+        <input id='lock-view' type='checkbox' checked={viewLocked} onChange={handleViewLocked} />
       </div>
       <div className='buttons'>
-        <button className='primary-btn sidebar-btn'>сохранить настройки</button>
+        <button className='primary-btn sidebar-btn'>сохранить</button>
       </div>
     </div>
   );

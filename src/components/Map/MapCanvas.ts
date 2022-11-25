@@ -1,5 +1,5 @@
 import { Feature, Map, View } from 'ol';
-import { Coordinate } from 'ol/coordinate';
+import { Coordinate, createStringXY } from 'ol/coordinate';
 import { Extent, getCenter } from 'ol/extent';
 import { MultiLineString, Point, Polygon } from 'ol/geom';
 import Geometry, { Type } from 'ol/geom/Geometry';
@@ -20,6 +20,7 @@ import Text from 'ol/style/Text';
 import { getFeaturesData, getMarkerSettings, getPolygonModels } from '../../api';
 import { IMarkerSettings } from '../../store/modelSettingsSlice';
 import { GreatCircle } from 'arc';
+import { MousePosition } from 'ol/control';
 
 type mapObjectType = {
   id: number;
@@ -42,6 +43,7 @@ interface IPolygonsObject {
   [key: string]: {
     polygon: number[][],
     feature: Feature,
+    yawOld: number,
   },
 }
 
@@ -123,11 +125,22 @@ class MapCanvas {
         this.featureInfoID = feature.getId() as number;
       }
     });
+
+    this.map.addControl(new MousePosition({
+      coordinateFormat: createStringXY(6),
+      projection: 'EPSG:4326',
+      className: 'custom-mouse-position',
+      target: document.getElementById('mouse-position') as HTMLElement,
+    }));
   }
 
-  public setZoomLevel (level: number) {
+  public setZoomLevel(level: number) {
     this.zoomLevel = level;
     this.map.getView().setZoom(level);
+  }
+
+  public setCenteredObject(id: number | 'None') {
+    this.centeredObject = id;
   }
 
   public changeInteractions(mode: string) {
@@ -138,18 +151,40 @@ class MapCanvas {
   }
 
   public getPinObjects() {
-    return Object.keys(this.FeaturesObject);
+    return Object.keys(this.FeaturesObject).map(id => Number(id));
   }
 
   public cleanDrawSource() {
     this.DrawLayerSource.clear();
   }
 
+  public setFeatureInfoID() {
+    this.featureInfoID = -1;
+  }
+
+  public getViewLocked() {
+    return this.lockedView;
+  }
+
+  public setViewLocked(locked: boolean) {
+    this.lockedView = locked;
+  }
+
   public getFeatureInfo() {
     if (this.featureInfoID !== -1) {
       this.featureInfo = this.FeaturesObject[this.featureInfoID].featureParams;
+    } else {
+      this.featureInfo = null;
     }
     return this.featureInfo;
+  }
+
+  public translateView(id: number | 'None') {
+    if (id === 'None') return;
+
+    const coords = [this.FeaturesObject[id].featureParams.longitude, this.FeaturesObject[id].featureParams.latitude];
+
+    this.map.getView().setCenter(fromLonLat(coords));
   }
 
   public drawLine() {
@@ -164,7 +199,7 @@ class MapCanvas {
         const coordinate = toLonLat(getCenter(extent));
 
         if (!feature.getId()) feature.setId(this.userPoints.length);
-          
+        
         this.userPoints[Number(feature.getId())] = coordinate;
       }
     }
@@ -180,7 +215,7 @@ class MapCanvas {
       for (let j = 0; j < line.geometries[0].coords.length - 1; j++) {
         coordinates.push([
           line.geometries[0].coords[j],
-          line.geometries[0].coords[i + 1],
+          line.geometries[0].coords[j + 1],
         ]);
       }
     }
@@ -239,7 +274,7 @@ class MapCanvas {
   private async getMarkerSettings() {
     this.MarkersObject = await getMarkerSettings();
 
-    setInterval(this.updateFeaturesData.bind(this), 2000);
+    setInterval(this.updateFeaturesData.bind(this), 20);
   }
 
   private async updateFeaturesData() {
@@ -407,6 +442,7 @@ class MapCanvas {
             this.PolygonsObject[featureParams.id] = {
               polygon: polygons[this.MarkersObject[featureParams.type].polygonModel],
               feature: polygonFeature,
+              yawOld: 0,
             };
 
             this.PolygonsLayerSource.addFeature(polygonFeature);
@@ -440,7 +476,10 @@ class MapCanvas {
     const feature = this.PolygonsObject[id].feature;
 
     const geometry = feature.getGeometry();
-    geometry?.rotate(yaw / 57.2958, getCenter(geometry.getExtent()));
+
+    const angle = - (yaw - this.PolygonsObject[id].yawOld);
+    geometry?.rotate(angle / 57.2958, getCenter(geometry.getExtent()));
+    this.PolygonsObject[id].yawOld = yaw;
   }
 
   private setViewCenter() {
@@ -449,6 +488,8 @@ class MapCanvas {
         this.FeaturesObject[this.centeredObject].featureParams.longitude,
         this.FeaturesObject[this.centeredObject].featureParams.latitude,
       ];
+
+      // console.log(coords, this.lockedView);
 
       if (this.lockedView) {
         this.map.getView().setCenter(fromLonLat([...coords]));
