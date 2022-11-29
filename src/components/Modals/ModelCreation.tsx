@@ -55,14 +55,14 @@ const ModelCreation: FC<ModalProps> = ({ handleClose }) => {
             <input type='range' id='gridStep' name='volume' min={10} max={80} value={pixelWidth} step={10} onChange={handleRange} />
             <span>Ширина клетки в пикселях {pixelWidth}</span>
           </div>
-          <Tooltip
-            title='Количество метров содержащихся в одной клетке поля.'
-          >
-            <div className='canvas-slider'>
+          <div className='canvas-slider'>
+            <Tooltip
+              title='Количество метров содержащихся в одной клетке поля.'
+            >
               <input type='range' id='meterSize' name='meterSize' min={1} max={1000} value={meterWidth} step={1} onChange={handleRange} />
-              <span>Ширина клетки в метрах {meterWidth}</span>
-            </div>
-          </Tooltip>
+            </Tooltip>
+            <span>Ширина клетки в метрах {meterWidth}</span>
+          </div>
           <div className='canvas-create'>
             <span>Имя модели</span>
             <input type='text' value={modelName} onChange={handleModelName} />

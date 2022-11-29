@@ -20,7 +20,7 @@ import Text from 'ol/style/Text';
 import { getFeaturesData, getMarkerSettings, getPolygonModels } from '../../api';
 import { IMarkerSettings } from '../../store/modelSettingsSlice';
 import { GreatCircle } from 'arc';
-import { MousePosition } from 'ol/control';
+import { Attribution, FullScreen, MousePosition, OverviewMap, Rotate, ScaleLine, Zoom, ZoomSlider, ZoomToExtent } from 'ol/control';
 
 type mapObjectType = {
   id: number;
@@ -51,13 +51,17 @@ interface IMarkersObject extends IMarkerSettings {}
 
 class MapCanvas {
   private map: Map; 
+  private TileSource = new OSM();
   private ObjectsLayerSource = new VectorSource({});
   private ObjectsLayer = new VectorLayer({});
   private PolygonsLayerSource = new VectorSource({});
   private PolygonLayer = new VectorLayer({});
-  private DrawLayerSource = new VectorSource({ wrapX: false });
+  private DrawLayerSource = new VectorSource({});
   private DrawLayer = new VectorLayer({});
-  private Modifier = new Modify({ source: this.DrawLayerSource });
+  private DrawModifier = new Modify({ source: this.DrawLayerSource });
+  private DistanceLayerSource = new VectorSource({});
+  private DistanceLayer = new VectorLayer({});
+  private DistanceModifier = new Modify({ source: this.DistanceLayerSource });
   private FeaturesObject: FeaturesObjectI = {};
   private PolygonsObject: IPolygonsObject = {};
   private MarkersObject: IMarkersObject = {};
@@ -69,6 +73,7 @@ class MapCanvas {
   private featureInfoID: number = -1;
   private featureInfo: mapObjectType | null = null;
   private userPoints: Coordinate[] = [];
+  private distances: [number, number][] = [];
   private draw: Draw = new Draw({
     source: this.DrawLayerSource,
     type: 'LineString',
@@ -100,7 +105,7 @@ class MapCanvas {
     this.DrawLayer.setSource(this.DrawLayerSource);
     this.DrawLayer.setStyle(new Style({
       fill: new Fill({ 
-        color: 'rgba(255, 255, 255, 0.2)' 
+        color: 'rgba(255, 255, 255, 0.4)' 
       }),
       stroke: new Stroke({
         color: '#000',
@@ -113,8 +118,17 @@ class MapCanvas {
         }),
       }),
     }));
-    this.map.addInteraction(this.Modifier);
+    this.map.addInteraction(this.DrawModifier);
     // this.ObjectsLayer.setStyle((feature) => this.styles[feature.get('type')]);
+
+    this.map.addLayer(this.DistanceLayer);
+    this.DistanceLayer.setSource(this.DistanceLayerSource);
+    this.DistanceLayer.setStyle(new Style({
+      stroke: new Stroke({
+        width: 2,
+      }),
+    }));
+    // this.map.addInteraction(this.DistanceModifier);
 
     this.getMarkerSettings();
 
@@ -126,12 +140,65 @@ class MapCanvas {
       }
     });
 
+    this.map.on('pointermove', (event) => {
+      const feature = this.map.forEachFeatureAtPixel(event.pixel, (f) => f);
+
+      const popup = document.getElementById('popup') as HTMLElement;
+
+      if (feature && feature.getId()?.toString().includes('distance')) {
+        const id = feature.getId()?.toString().split('_') as string[];
+        const [first, second] = [id[0], id[2]].map(i => this.FeaturesObject[Number(i)].featureParams);
+
+        const coords1 = [first.latitude, first.longitude, first.altitude] as [number, number, number];
+        const coords2 = [second.latitude, second.longitude, second.altitude] as [number, number, number];
+
+        const distance = this.calculateDistance(coords1, coords2);
+
+        popup.innerHTML = `${(distance / 1000).toFixed(3)} км`;
+
+        popup.style.left = `${event.pixel[0] - 45}px`;
+        popup.style.top = `${event.pixel[1] + 10}px`;
+        popup.style.display = 'block';
+
+      } else {
+        popup.style.display = 'none';
+      }
+    });
+
+    const mapElement = document.getElementById('map') as HTMLElement;
+
+    const mousePositionElement = document.createElement('div');
+    mousePositionElement.setAttribute('id', 'mouse-position');
+    mapElement.appendChild(mousePositionElement);
+
+    const scaleLineElement = document.createElement('div');
+    scaleLineElement.setAttribute('id', 'scale-line');
+    mapElement.appendChild(scaleLineElement);
+
+    // const overviewMapElement = document.createElement('div');
+    // overviewMapElement.setAttribute('id', 'overview-map');
+    // mapElement.appendChild(overviewMapElement);
+
     this.map.addControl(new MousePosition({
       coordinateFormat: createStringXY(6),
       projection: 'EPSG:4326',
       className: 'custom-mouse-position',
-      target: document.getElementById('mouse-position') as HTMLElement,
+      target: mousePositionElement,
     }));
+
+    this.map.addControl(new ScaleLine());
+
+    this.map.addControl(new Zoom());
+
+    this.map.addControl(new Rotate());
+
+    this.map.addControl(new FullScreen());
+
+    this.map.addControl(new ZoomToExtent());
+
+    this.map.addControl(new ZoomSlider());
+
+    // this.map.addControl(new OverviewMap());
   }
 
   public setZoomLevel(level: number) {
@@ -187,6 +254,10 @@ class MapCanvas {
     this.map.getView().setCenter(fromLonLat(coords));
   }
 
+  public pushDistance(distance: [number, number]) {
+    this.distances.push(distance);
+  }
+
   public drawLine() {
     const coordinates = [];
 
@@ -228,13 +299,68 @@ class MapCanvas {
     const marker = new MultiLineString(coordinates);
 
     const markerFeature = new Feature({
-      name: 'markerFeature',
+      name: 'DrawFeature',
       geometry: marker,
     });
 
     this.DrawLayerSource.addFeature(markerFeature);
 
     this.userPoints = [];
+  }
+
+  private drawDistance(distance: [number, number]) {
+    const coordinates = [];
+
+    const arcGenerator = new GreatCircle(
+      {
+        x: this.FeaturesObject[distance[0]].featureParams.longitude, 
+        y: this.FeaturesObject[distance[0]].featureParams.latitude,
+      },
+      {
+        x: this.FeaturesObject[distance[1]].featureParams.longitude, 
+        y: this.FeaturesObject[distance[1]].featureParams.latitude,
+      }
+    );
+
+    const line = arcGenerator.Arc(100, { offset: 10 });
+
+    for (let i = 0; i < line.geometries[0].coords.length - 1; i++) {
+      coordinates.push([
+        line.geometries[0].coords[i],
+        line.geometries[0].coords[i + 1],
+      ]);
+    }
+
+    for (let i = 0; i < coordinates.length; i++) {
+      coordinates[i][0] = fromLonLat(coordinates[i][0]);
+      coordinates[i][1] = fromLonLat(coordinates[i][1]);
+    }
+
+    const marker = new MultiLineString(coordinates);
+
+    const markerFeature = new Feature({
+      name: 'DistanceFeature',
+      geometry: marker,
+    });
+
+    // const [first, second] = [this.FeaturesObject[distance[0]].featureParams, this.FeaturesObject[distance[1]].featureParams];
+
+    // const coords1 = [first.latitude, first.longitude, first.altitude] as [number, number, number];
+    // const coords2 = [second.latitude, second.longitude, second.altitude] as [number, number, number];
+
+    // const text = (this.calculateDistance(coords1, coords2) / 1000).toFixed(3);
+
+    // markerFeature.setStyle(new Style({
+    //   text: new Text({
+    //     text,
+    //     fill: new Fill({ color: '#00F' }),
+    //     stroke: new Stroke({ color: '#000', width: 1 })
+    //   }),
+    // }));
+
+    markerFeature.setId(`${distance[0]}_distance_${distance[1]}`);
+
+    this.DistanceLayerSource.addFeature(markerFeature);
   }
 
   private addInteractions(mode: string) {
@@ -258,9 +384,7 @@ class MapCanvas {
 
     return new Map({
       layers: [
-        new TileLayer({
-          source: new OSM(),
-        }),
+        new TileLayer({ source: this.TileSource }),
       ],
       target: 'map'
       ,
@@ -268,6 +392,7 @@ class MapCanvas {
           center: [-1, -1],
           zoom: 3,
       }),
+      controls: [],
     });
   }
 
@@ -279,6 +404,7 @@ class MapCanvas {
 
   private async updateFeaturesData() {
     const { features, idsByAltitude } = await getFeaturesData();
+    console.log('hi');
     // TODO: set styles
     if (Object.keys(features).length !== 0) {
       for (const key in features) {
@@ -369,6 +495,11 @@ class MapCanvas {
           this.ObjectsLayerSource.addFeature(this.FeaturesObject[this.idsByAltitude[i]].feature);
         }
       }
+    }
+
+    this.DistanceLayerSource.clear();
+    for (let distance of this.distances) {
+      this.drawDistance(distance);
     }
 
     this.updatePolygonsData();
@@ -501,34 +632,32 @@ class MapCanvas {
     }
   }
 
-  private getXYZ(coords: [number, number, number]) {
-
-    const [lat, lon, alt] = coords;
-    const [a, b] = [6378137, 6356752.314245];
-
-    const e = 1 - (b ** 2 / a ** 2);
-    const N = a / Math.sqrt(1 - e * Math.pow(Math.sin(lat), 2));
-
-    const X = (N + alt) * Math.cos(lat) * Math.cos(lon);
-    const Y = (N + alt) * Math.cos(lat) * Math.sin(lon);
-    const Z = ((b ** 2 / a ** 2) * N + alt) * Math.sin(lat);
-
-    return [X, Y, Z];
-  }
-
-  // [LAT, LON, ALT]
   public calculateDistance(coords1: [number, number, number], coords2: [number, number, number]) {
 
-    const [X1, Y1, Z1] = this.getXYZ(coords1);
-    const [X2, Y2, Z2] = this.getXYZ(coords2);
+    const R = 6371000;
+    const curve = Math.PI / 180;
 
-    // const [X1, Y1, Z1] = [1 * 111134.861111 , 1 * 111321.377778, 1];
-    // const [X2, Y2, Z2] = [2 * 111134.861111 , 20 * 111321.377778, 1];
+    const phi1 = coords1[0] * curve;      //долгота 1
+    const phi2 = coords2[0] * curve;      //долгота 2
 
-    const distance = Math.pow((X2 - X1) ** 3 + (Y2 - Y1) ** 3 + (Z2 - Z1) ** 3, (1 / 3));
+    const alpha1 = coords1[1] * curve;    //широта 1
+    const alpha2 = coords2[1] * curve;    //широта 2
+    
+    const deltaPhi = phi2  - phi1;
+    const deltaAlpha = alpha2 - alpha1;
 
-    return distance;    
-  }
+    const a = Math.sin(deltaPhi / 2) ** 2 +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaAlpha / 2) ** 2;
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    const d = R * c;
+
+    const deltaAlt = Math.abs(coords1[2] - coords2[2]);
+
+    return Math.sqrt(d ** 2 + deltaAlt ** 2);
+  }   
 }
 
 export default MapCanvas;

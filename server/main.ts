@@ -115,9 +115,9 @@ wsServer.on('connection', (socket) => {
   });
 });
 
-let block = true
+let block = true;
 
-function sendData(freq: number){
+const sendData = (freq: number) => {
   if (block) return;
 
   // send

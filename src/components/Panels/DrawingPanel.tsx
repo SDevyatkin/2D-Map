@@ -26,7 +26,7 @@ const DrawingPanel: FC = () => {
     Map.changeInteractions(event.target.value);
   };
 
-  // console.log((Map.calculateDistance([5, 5, 0], [10, 10, 0]) / 1000).toFixed(3));
+  // console.log((Map.calculateDistance([5, 5, 0], [5, 5, 1000]) / 1000).toFixed(3));
 
   return (
     <div className='sidebar-panel'>
