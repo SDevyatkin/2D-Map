@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { getImageNames, getMapConfig, getMarkerSettings, getPolygonModels } from './api';
+import { BASE_URL, getImageNames, getMapURL, getMarkerSettings, getPolygonIcons } from './api';
 import { changeImageNames, setMarkerSettings, changePolygonModels } from './store/modelSettingsSlice';
 
 export const useData = () => {
@@ -9,12 +9,14 @@ export const useData = () => {
   let mapConfig, imageNames, polygonModels, markerSettings, socket;
 
   useEffect(() => {
-    mapConfig = getMapConfig();
+    mapConfig = getMapURL();
     imageNames = getImageNames()
+    // imageNames = fetch(`${BASE_URL}/ImagesNames`)
+      // .then((response) => response.json())
       .then((data) => {
         dispatch(changeImageNames(data));
       });
-    polygonModels = getPolygonModels()
+    polygonModels = getPolygonIcons()
       .then((data) => {
         dispatch(changePolygonModels(data));
       });

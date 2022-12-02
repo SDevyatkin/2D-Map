@@ -130,7 +130,8 @@ app.use(cors());
 // app.use('/public', express.static(`${__dirname}/public`));
 app.use(express.json());
 
-app.engine('html', engines.mustache);
+app.use('/public', express.static(path.join(__dirname, '/public')))
+// app.engine('html', engines.mustache);
 
 app.listen(3002, () => console.log('HTTP сервер запущен на 3002 порту.'));
 
@@ -156,7 +157,7 @@ app.get('/MapURL', (_, response: express.Response) => {
 
 app.get('/MarkerSettings', (_, response: express.Response) => {
   try {
-    const markerSettings = JSON.parse(fs.readFileSync('MarkerSettings.json', 'utf-8'));
+    const markerSettings = JSON.parse(fs.readFileSync('./JSON/MarkerSettings.json', 'utf-8'));
     response.send(markerSettings);
   } catch (error) {
     console.log(error.message);
@@ -166,8 +167,19 @@ app.get('/MarkerSettings', (_, response: express.Response) => {
 
 app.get('/PolygonIcons', (_, response: express.Response) => {
   try {
-    const polygonModels = JSON.parse(fs.readFileSync('PolygonIcons.json', 'utf-8'));
+    const polygonModels = JSON.parse(fs.readFileSync('./JSON/PolygonIcons.json', 'utf-8'));
     response.send(polygonModels);
+  } catch (error) {
+    console.log(error.message);
+    response.status(400);
+  }
+});
+
+app.get('/ImagesNames', (_, response: express.Response) => {
+  try {
+    const ImagesNames = fs.readdir('./public/images/', (_, files) => {
+      response.send({ data: files });
+    });
   } catch (error) {
     console.log(error.message);
     response.status(400);
@@ -204,13 +216,14 @@ app.get('/Route/:id', (request: express.Request, response: express.Response) => 
   }
 });
 
-app.post('/MarkerSettings', (request: express.Request, response: express.Response) => {
+app.post('/MarkerSettings', (request, response: express.Response) => {
   try {
-    fs.writeFileSync('MarkerSettings.json', request.body);
+    console.log(JSON.parse(request.body));
+    fs.writeFileSync('./JSON/MarkerSettings.json', JSON.parse(request.body));
     response.send('Настройки маркеров обновлены.');
   } catch (error) {
     console.log(error.message);
-    response.send(400);
+    response.sendStatus(400);
   }
 });
 
@@ -219,7 +232,7 @@ app.post('/PolygonIcons', (request: express.Request, response: express.Response)
     const polygonModels = JSON.parse(fs.readFileSync('PolygonModels.json', 'utf-8'));
     polygonModels[request.body.name] = request.body.data;
 
-    fs.writeFileSync('PolygonIcons.json', polygonModels);
+    fs.writeFileSync('./JSON/PolygonIcons.json', polygonModels);
     response.send('Иконка добавлена.');
   } catch (error) {
     console.log(error.message);

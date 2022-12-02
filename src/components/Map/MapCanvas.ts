@@ -17,12 +17,13 @@ import Icon from 'ol/style/Icon';
 import Stroke from 'ol/style/Stroke';
 import Style from 'ol/style/Style';
 import Text from 'ol/style/Text';
-import { getFeaturesData, getMarkerSettings, getPolygonModels } from '../../api';
+import { BASE_URL, getMarkerSettings, getPolygonIcons } from '../../api';
 import { IMarkerSettings } from '../../store/modelSettingsSlice';
 import { GreatCircle } from 'arc';
 import { Attribution, FullScreen, MousePosition, OverviewMap, Rotate, ScaleLine, Zoom, ZoomSlider, ZoomToExtent } from 'ol/control';
 import { IFeatures, IFeaturesData } from '../../wsTypes';
 import KOK from './../../assets/images/Jet.png'
+import { threadId } from 'worker_threads';
 
 type mapObjectType = {
   id: number;
@@ -38,6 +39,7 @@ interface FeaturesObjectI {
   [key: number]: {
     feature: Feature,
     featureParams: mapObjectType,
+    style: Style,
   }
 }
 
@@ -407,7 +409,7 @@ class MapCanvas {
   private async getMarkerSettings() {
     this.MarkersObject = await getMarkerSettings();
 
-    setInterval(this.updateFeaturesData.bind(this), 20);
+    // setInterval(this.updateFeaturesData.bind(this), 20);
   }
 
   public async updateFeaturesData(features: IFeatures, idsByAltitude: number[]) {
@@ -424,60 +426,94 @@ class MapCanvas {
 
           const settings = this.MarkersObject[features[key].type];
 
+          const newFeatureStyle = new Style();
+
+          newFeatureStyle.setText(
+            new Text({
+              font: '16px Calibri, sans-serif',
+              fill: new Fill({ color: '#f00' }),
+              stroke: new Stroke({
+                color: '#000',
+                width: 2,
+              }),
+              text: String(key),
+              offsetX: 30,
+              offsetY: 30,
+            })
+          )
+
           if (features[key].type in this.MarkersObject) {
-            newFeature.setStyle(new Style({
-              text: new Text({
-                font: '16px Calibri, sans-serif',
-                fill: new Fill({ color: '#f00' }),
-                stroke: new Stroke({
-                  color: '#000',
-                  width: 2,
-                }),
-                text: String(key),
-                offsetX: 30,
-                offsetY: 30,
-              }),
-              image: new Icon({
-                opacity: settings.alpha,
-                scale: settings.size,
-                src: `/public/images/${settings.image}`,
-                rotation: features[key].yaw / 57.2958 - this.currentRotation,
-              }),
+
+            newFeatureStyle.setImage(
+              new Icon({
+              opacity: settings.alpha,
+              scale: settings.size,
+              src: `${BASE_URL}/public/images/${settings.image}`,
+              rotation: features[key].yaw / 57.2958 - this.currentRotation,
             }));
+
+            // newFeature.setStyle(new Style({
+            //   text: new Text({
+            //     font: '16px Calibri, sans-serif',
+            //     fill: new Fill({ color: '#f00' }),
+            //     stroke: new Stroke({
+            //       color: '#000',
+            //       width: 2,
+            //     }),
+            //     text: String(key),
+            //     offsetX: 30,
+            //     offsetY: 30,
+            //   }),
+            //   image: new Icon({
+            //     opacity: settings.alpha,
+            //     scale: settings.size,
+            //     src: `${BASE_URL}/public/images/${settings.image}`,
+            //     rotation: features[key].yaw / 57.2958 - this.currentRotation,
+            //   }),
+            // }));
           } else {
-            newFeature.setStyle(new Style({
-              text: new Text({
-                font: '16px Calibri, sans-serif',
-                fill: new Fill({ color: '#f00' }),
-                stroke: new Stroke({
-                  color: '#000',
-                  width: 2,
-                }),
-                text: String(key),
-                offsetX: 30,
-                offsetY: 30,
-              }),
-              image: new Icon({
-                opacity: 1,
-                scale: 0.15,
-                src: `/public/images/question.png`,
-                rotation: features[key].yaw / 57.2958 - this.currentRotation,
-              }),
+            // newFeature.setStyle(new Style({
+            //   text: new Text({
+            //     font: '16px Calibri, sans-serif',
+            //     fill: new Fill({ color: '#f00' }),
+            //     stroke: new Stroke({
+            //       color: '#000',
+            //       width: 2,
+            //     }),
+            //     text: String(key),
+            //     offsetX: 30,
+            //     offsetY: 30,
+            //   }),
+            //   image: new Icon({
+            //     opacity: 1,
+            //     scale: 0.15,
+            //     src: `${BASE_URL}/public/images/question.png`,
+            //     rotation: features[key].yaw / 57.2958 - this.currentRotation,
+            //   }),
+            // }));
+            newFeatureStyle.setImage(
+              new Icon({
+              opacity: 1,
+              scale: 0.15,
+              src: `${BASE_URL}/public/images/question.png`,
+            rotation: features[key].yaw / 57.2958 - this.currentRotation,
             }));
           }
+
+          newFeature.setStyle(newFeatureStyle)
 
           this.ObjectsLayerSource.addFeature(newFeature);
 
           this.FeaturesObject[features[key].id] = {
             feature: newFeature,
             featureParams: features[key],
+            style: newFeatureStyle
           }
 
         } else {
           this.FeaturesObject[features[key].id].featureParams = features[key];
-
           this.moveObjectLayerFeature(features[key].id, features[key].longitude, features[key].latitude);
-          this.rotateObjectLayerFeature(features[key].id, features[key].yaw);
+          this.FeaturesObject[features[key].id].style.getImage().setRotation(features[key].yaw / 57.2958)
         }
 
       }
@@ -523,30 +559,52 @@ class MapCanvas {
     const feature = this.FeaturesObject[id].feature;
     const settings = this.MarkersObject[this.FeaturesObject[id].featureParams.type];
 
-    feature.setStyle(new Style({
-      text: new Text({
-        font: '16px Calibri, sans-serif',
-        fill: new Fill({ color: '#f00' }),
-        stroke: new Stroke({
-          color: '#000',
-          width: 2,
+    try {
+      feature.setStyle(new Style({
+        text: new Text({
+          font: '16px Calibri, sans-serif',
+          fill: new Fill({ color: '#f00' }),
+          stroke: new Stroke({
+            color: '#000',
+            width: 2,
+          }),
+          text: String(id),
+          offsetX: 30,
+          offsetY: 30,
         }),
-        text: String(id),
-        offsetX: 30,
-        offsetY: 30,
-      }),
-      image: new Icon({
-        opacity: settings.alpha,
-        scale: settings.size,
-        src: `/public/images/${settings.image}`,
-        rotation: yaw / 57.2958 - this.currentRotation,
-      }),
-    }));
+        image: new Icon({
+          opacity: settings.alpha,
+          scale: settings.size,
+          src: `${BASE_URL}/public/images/${settings.image}`,
+          rotation: yaw / 57.2958 - this.currentRotation,
+        }),
+      }));
+    } catch {
+      feature.setStyle(new Style({
+        text: new Text({
+          font: '16px Calibri, sans-serif',
+          fill: new Fill({ color: '#f00' }),
+          stroke: new Stroke({
+            color: '#000',
+            width: 2,
+          }),
+          text: String(id),
+          offsetX: 30,
+          offsetY: 30,
+        }),
+        image: new Icon({
+          opacity: 1,
+          scale: 0.2,
+          src: `${BASE_URL}/public/images/question.png`,
+          rotation: yaw / 57.2958 - this.currentRotation,
+        }),
+      }));
+    }
   }
 
   private async updatePolygonsData() {
 
-    const polygons = await getPolygonModels();
+    const polygons = await getPolygonIcons();
 
     for (let key of Object.keys(this.FeaturesObject)) {
 

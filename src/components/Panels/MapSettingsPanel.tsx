@@ -8,16 +8,17 @@ import Select from '../Select';
 
 const MapSettingsPanel: FC = () => {
 
-  const [pinObjects, setPinObjects] = useState<number[]>([]);
+  // const [pinObjects, setPinObjects] = useState<number[]>([]);
 
-  const { Map, selectedPinObject, zoomLevel, viewLocked } = useSelector((state: RootState) => ({
+  const { Map, pinObjects, selectedPinObject, zoomLevel, viewLocked } = useSelector((state: RootState) => ({
     Map: state.Map.map,
+    pinObjects: state.pinObjects.objects,
     selectedPinObject: state.pinObjects.selected,
     zoomLevel: state.zoomLevel.level,
     viewLocked: state.Map.map.getViewLocked()
   }));
 
-  useEffect(() => { setInterval(() => setPinObjects(Map.getPinObjects()), 20) });
+  // useEffect(() => { setInterval(() => setPinObjects(Map.getPinObjects()), 20) });
 
   const dispatch = useDispatch();
 

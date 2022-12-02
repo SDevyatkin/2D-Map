@@ -19,13 +19,15 @@ const App = (): JSX.Element => {
 
   const [sidebarOpened, setSidebarOpened] = useState<boolean>(false);
 
-  const {  } = useData();
+  useData();
 
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:3001');
 
     ws.addEventListener('message', (event) => {
-      Map.updateFeaturesData(event.data, Object.keys(event.data).map(id => Number(id)));
+      const data = JSON.parse(event.data);
+      dispatch(changePinObjects(Object.keys(data).map(id => Number(id))));
+      Map.updateFeaturesData(data, Object.keys(data).map(id => Number(id)));
     });
 
     dispatch(changePinObjects(Map.getPinObjects().map(item => Number(item))));
@@ -41,7 +43,7 @@ const App = (): JSX.Element => {
       {/* <Map2D /> */}
       <Sidebar opened={sidebarOpened} handleSidebar={handleSidebar} />
       {/* <NewSidebar /> */}
-      <FeatureInfoModal />
+      {/* <FeatureInfoModal /> */}
     </div>
   );
 }

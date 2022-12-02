@@ -14,7 +14,7 @@ const DistancePanel: FC = () => {
     Map: state.Map.map,
   }));
 
-  useEffect(() => { setInterval(() => setPinObjects(Map.getPinObjects()), 20) });
+  // useEffect(() => { setInterval(() => setPinObjects(Map.getPinObjects()), 20) });
 
   const handleFirstObject = (event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;

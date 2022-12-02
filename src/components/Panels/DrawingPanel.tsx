@@ -1,4 +1,4 @@
-import { ChangeEvent, FC } from 'react';
+import { ChangeEvent, FC, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectDrawingMode } from '../../store/drawingSettingsSlice';
 import { RootState } from '../../store/store';
@@ -36,8 +36,8 @@ const DrawingPanel: FC = () => {
         <Select data={Object.entries(drawingModes)} value={selectedDrawingMode} noneField='Выкл' onChange={onChange} />
       </div>
       <div className='buttons'> 
-        <button className='primary-btn sidebar-btn' onClick={() => Map.cleanDrawSource()}>очистить</button>
-        <button className='primary-btn sidebar-btn' onClick={() => Map.drawLine()}>построить маршрут</button>
+        <button className='primary-btn sidebar-btn' onClick={useCallback(() => Map.cleanDrawSource(), [])}>очистить</button>
+        <button className='primary-btn sidebar-btn' onClick={useCallback(() => Map.drawLine(), [])}>построить маршрут</button>
       </div>
     </div>
   );

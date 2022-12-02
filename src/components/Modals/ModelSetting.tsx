@@ -7,8 +7,11 @@ import { RootState } from '../../store/store';
 import { changeImage, changeMarkerSettings, changeModel, changeOpacity, changeSize, changeType } from '../../store/modelSettingsSlice';
 import { getImageNames, saveMarkerSettings } from '../../api';
 import TableRow from './TableRow';
+import KOK from '../../assets/images/Jet.png';
 
 const ModelSetting: FC<ModalProps> = ({ handleClose }) => {
+
+  console.log(KOK);
 
   const { type, image, size, opacity, model, imageNames, polygonModels, markerSettings } = useSelector((state: RootState) => state.modelSettings);
   const dispatch = useDispatch();
@@ -55,7 +58,8 @@ const ModelSetting: FC<ModalProps> = ({ handleClose }) => {
           <span>Изображение:</span>
           <Select value={image} data={imageNames} noneField='' onChange={handleImageChange} />
         </div>
-        <img src={`http://localhost:8080/public/images/${image}`} width={50} height={50} />
+        <img src={KOK} width={50} height={50} />
+        {/* <img src={`/public/images/${image}`} width={50} height={50} /> */}
         <div className='settings-item'>
           <span>Размер:</span>
           <input type='number' value={size} step={0.05} onChange={handleSizeChange} />

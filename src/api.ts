@@ -1,26 +1,27 @@
 import { IMarkerSettings } from './store/modelSettingsSlice';
+import axios from 'axios';
 
-const BASE_URL = 'http://localhost:8080';
+export const BASE_URL = 'http://localhost:3002';
 
-export const getMapConfig = async () => {
+export const getMapURL = async () => {
+  
+  const response = await fetch(`${BASE_URL}/MapURL`);
+  const mapURL = await response.json();
 
-  const response = await fetch(`${BASE_URL}/MapConfig`, { mode: 'cors' });
-  const mapConfig = await response.json();
-
-  return mapConfig;
+  return mapURL;
 };
 
-export const getFeaturesData = async () => {
+// export const getFeaturesData = async () => {
 
-  const response = await fetch(`${BASE_URL}/MapData`, { mode: 'cors' });
-  const mapData = await response.json();
+//   const response = await fetch(`${BASE_URL}/MapData`, { mode: 'cors' });
+//   const mapData = await response.json();
 
-  return mapData;
-};
+//   return mapData;
+// };
 
-export const getMapSettings = async () => {
+export const getMapViewSettings = async () => {
 
-  const response = await fetch(`${BASE_URL}/MapSettings`, { mode: 'cors' });
+  const response = await fetch(`${BASE_URL}/MapViewSettings`, { mode: 'cors' });
   const mapSettings = response.json();
 
   return mapSettings;
@@ -28,18 +29,20 @@ export const getMapSettings = async () => {
 
 export const getImageNames = async () => {
 
-  const response = await fetch(`${BASE_URL}/ImageNames`, { mode: 'cors' });
+  const response = await fetch(`${BASE_URL}/ImagesNames`, { mode: 'cors' });
   const imageNames = await response.json();
   
+  console.log(imageNames.data);
+
   return imageNames.data;
 };
 
-export const getPolygonModels = async () => {
+export const getPolygonIcons = async () => {
 
-  const response = await fetch(`${BASE_URL}/PolygonModels`, { mode: 'cors' });
-  const polygonModels = response.json();
+  const response = await fetch(`${BASE_URL}/PolygonIcons`, { mode: 'cors' });
+  const polygonIcons = response.json();
 
-  return polygonModels;
+  return polygonIcons;
 };
 
 export const getMarkerSettings = async () => {
@@ -61,8 +64,9 @@ export const getMarkerSettings = async () => {
   return editedMarkerSettings;
 };
 
-export const getDistance = async () => {
-  const response = await fetch(`${BASE_URL}/Distance`, { mode: 'cors' });
+export const getDistance = async (first: number, second: number) => {
+
+  const response = await fetch(`${BASE_URL}/Distance${first}/${second}`, { mode: 'cors' });
   const distance = await response.json();
 
   return distance;
@@ -82,16 +86,32 @@ export const saveNewPolygonModel = async (modelName: string, modelPoints: number
 };
 
 export const saveMarkerSettings = async (settings: IMarkerSettings) => {
-  const response = await fetch(`${BASE_URL}/client/SaveMarkerSettings`, {
-    method: 'POST',
-    mode: 'cors',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(settings),
-  });
+  console.log(JSON.stringify(settings));
 
-  return response.status;
+  try {
+    // fetch(`${BASE_URL}/SaveMarkerSettings`, {
+    //   method: 'POST',
+    //   mode: 'cors',
+    //   headers: {
+    //     'Content-Type': 'application/json; charset=UTF-8',
+    //   },
+    //   body: JSON.stringify(settings),
+    // });
+    await axios.post(
+      `${BASE_URL}/MarkerSettings`,
+      settings,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*' 
+        },
+      }
+    );
+  } catch (error) {
+    console.log(error);
+  }
+
+  
 };
 
 // export const getFeaturesDataWS = async () => {
