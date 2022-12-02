@@ -136,7 +136,7 @@ app.listen(3002, () => console.log('HTTP сервер запущен на 3002 �
 
 app.get('/MapViewSettings', (_, response: express.Response) => {
   try {
-    const mapConfig = JSON.parse(fs.readFileSync('MapViewSettings', 'utf-8'));
+    const mapConfig = JSON.parse(fs.readFileSync('MapViewSettings.json', 'utf-8'));
     response.send(mapConfig);
   } catch (error) {
     console.log(error.message);
