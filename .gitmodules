@@ -1,3 +1,0 @@
-[submodule "Server"]
-	path = Server
-	url = git@github.com:SDevyatkin/2D-Map-Server.git
