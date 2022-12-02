@@ -1,5 +1,6 @@
 import { FC, MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
+// import { getFeaturesDataWS } from '../api';
 import DistancePanel from './Panels/DistancePanel';
 import DrawingPanel from './Panels/DrawingPanel';
 import MapSettingsPanel from './Panels/MapSettingsPanel';

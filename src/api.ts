@@ -61,6 +61,13 @@ export const getMarkerSettings = async () => {
   return editedMarkerSettings;
 };
 
+export const getDistance = async () => {
+  const response = await fetch(`${BASE_URL}/Distance`, { mode: 'cors' });
+  const distance = await response.json();
+
+  return distance;
+};
+
 export const saveNewPolygonModel = async (modelName: string, modelPoints: number[][]) => {
   const response = await fetch(`${BASE_URL}/client/SaveNewModel`, {
     method: 'POST',
@@ -87,16 +94,8 @@ export const saveMarkerSettings = async (settings: IMarkerSettings) => {
   return response.status;
 };
 
-export const getFeaturesDataWS = async () => {
-  const socket = new WebSocket('ws://localhost:3001/MapData');
+// export const getFeaturesDataWS = async () => {
+//   const socket = new WebSocket('ws://localhost:3002');
 
-  return socket;
-
-  let data;
-
-  socket.onmessage = (event) => {
-    data = event.data;
-  };  
-
-  return data;
-};
+//   return socket; 
+// };

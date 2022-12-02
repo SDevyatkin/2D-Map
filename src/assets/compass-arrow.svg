@@ -1,0 +1,28 @@
+<svg width="508" height="508" xmlns="http://www.w3.org/2000/svg">
+
+ <g>
+  <title>background</title>
+  <rect fill="none" id="canvas_background" height="402" width="582" y="-1" x="-1"/>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <polygon transform="rotate(-45 255.20001220703114,212.79998779296872) " id="svg_4" fill="#FF7058" points="312.20001220703125,155.8000030517578 198.1999969482422,216.1999969482422 251.79998779296875,269.79998779296875 "/>
+  <polygon transform="rotate(-45 254.7999877929687,297.2000122070312) " id="svg_5" fill="#324A5E" points="197.8000030517578,354.20001220703125 311.79998779296875,293.79998779296875 258.20001220703125,240.1999969482422 "/>
+  <circle id="svg_6" fill="#FFD05B" r="21.2" cy="254" cx="254"/>
+  <g id="svg_12"/>
+  <g id="svg_13"/>
+  <g id="svg_14"/>
+  <g id="svg_15"/>
+  <g id="svg_16"/>
+  <g id="svg_17"/>
+  <g id="svg_18"/>
+  <g id="svg_19"/>
+  <g id="svg_20"/>
+  <g id="svg_21"/>
+  <g id="svg_22"/>
+  <g id="svg_23"/>
+  <g id="svg_24"/>
+  <g id="svg_25"/>
+  <g id="svg_26"/>
+ </g>
+</svg>

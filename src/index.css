@@ -60,6 +60,7 @@ input {
 
 #popup {
   position: absolute;
+  display: none;
   width: 100px;
   height: 30px;
   padding: 5px;
@@ -500,7 +501,6 @@ input {
 
 .ol-zoom-in,
 .ol-zoom-out,
-.ol-compass,
 .ol-full-screen,
 .ol-zoom-extent {
   width: 25px;
@@ -527,25 +527,16 @@ input {
   background: none;
 }
 
-.ol-compass {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 25px;
-  height: 20px;
-  padding: 3px;
-}
-
 .ol-zoom-extent {
   position: absolute;
-  top: 70px;
+  top: 150px;
   right: 10px;
   text-align: center;
 }
 
 .ol-full-screen {
   position: absolute;
-  top: 40px;
+  top: 120px;
   right: 10px;
   width: 25px;
   height: 20px;
@@ -578,4 +569,29 @@ input {
   height: 20px;
   background-color: #FFF;
   filter: none;
+}
+
+.ol-compass {
+  display: block;
+  width: 90px;
+  height: 90px;
+  background-image: url('./assets/compass-arrow.svg');
+  background-position: center;
+  background-size: contain;
+}
+
+.custom-compass {
+  position: absolute;
+  display: flex;
+  align-self: center;
+  justify-content: center;
+  top: 10px;
+  right: 10px;
+  width: 100px;
+  height: 100px;
+  padding-right: 2px;
+  padding-bottom: 2px;
+  background-image: url('./assets/compass.svg');
+  background-position: center;
+  background-size: contain;
 }

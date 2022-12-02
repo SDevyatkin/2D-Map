@@ -22,6 +22,12 @@ const App = (): JSX.Element => {
   const {  } = useData();
 
   useEffect(() => {
+    const ws = new WebSocket('ws://localhost:3001');
+
+    ws.addEventListener('message', (event) => {
+      Map.updateFeaturesData(event.data, Object.keys(event.data).map(id => Number(id)));
+    });
+
     dispatch(changePinObjects(Map.getPinObjects().map(item => Number(item))));
   }, []);
   

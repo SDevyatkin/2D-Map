@@ -1,4 +1,4 @@
-import { Feature, Map, View } from 'ol';
+import { Feature, Graticule, Map, View } from 'ol';
 import { Coordinate, createStringXY } from 'ol/coordinate';
 import { Extent, getCenter } from 'ol/extent';
 import { MultiLineString, Point, Polygon } from 'ol/geom';
@@ -21,6 +21,8 @@ import { getFeaturesData, getMarkerSettings, getPolygonModels } from '../../api'
 import { IMarkerSettings } from '../../store/modelSettingsSlice';
 import { GreatCircle } from 'arc';
 import { Attribution, FullScreen, MousePosition, OverviewMap, Rotate, ScaleLine, Zoom, ZoomSlider, ZoomToExtent } from 'ol/control';
+import { IFeatures, IFeaturesData } from '../../wsTypes';
+import KOK from './../../assets/images/Jet.png'
 
 type mapObjectType = {
   id: number;
@@ -74,6 +76,7 @@ class MapCanvas {
   private featureInfo: mapObjectType | null = null;
   private userPoints: Coordinate[] = [];
   private distances: [number, number][] = [];
+  private currentRotation: number = 0;
   private draw: Draw = new Draw({
     source: this.DrawLayerSource,
     type: 'LineString',
@@ -85,6 +88,8 @@ class MapCanvas {
 
   constructor() {
     this.map = this.createMap();
+
+    console.log(KOK);
 
     this.map.addLayer(this.ObjectsLayer);
     this.ObjectsLayer.setSource(this.ObjectsLayerSource);
@@ -165,6 +170,11 @@ class MapCanvas {
       }
     });
 
+    this.map.getView().on('change:rotation', (event) => {
+      console.log(event.target.values_.rotation);
+      this.currentRotation = event.target.values_.rotation;
+    });
+
     const mapElement = document.getElementById('map') as HTMLElement;
 
     const mousePositionElement = document.createElement('div');
@@ -175,9 +185,9 @@ class MapCanvas {
     scaleLineElement.setAttribute('id', 'scale-line');
     mapElement.appendChild(scaleLineElement);
 
-    // const overviewMapElement = document.createElement('div');
-    // overviewMapElement.setAttribute('id', 'overview-map');
-    // mapElement.appendChild(overviewMapElement);
+    // const compassElement = document.createElement('div');
+    // compassElement.setAttribute('id', 'compass');
+    // mapElement.appendChild(compassElement);
 
     this.map.addControl(new MousePosition({
       coordinateFormat: createStringXY(6),
@@ -190,7 +200,10 @@ class MapCanvas {
 
     this.map.addControl(new Zoom());
 
-    this.map.addControl(new Rotate());
+    this.map.addControl(new Rotate({
+      className: 'custom-compass',
+      label: '',
+    }));
 
     this.map.addControl(new FullScreen());
 
@@ -343,21 +356,6 @@ class MapCanvas {
       geometry: marker,
     });
 
-    // const [first, second] = [this.FeaturesObject[distance[0]].featureParams, this.FeaturesObject[distance[1]].featureParams];
-
-    // const coords1 = [first.latitude, first.longitude, first.altitude] as [number, number, number];
-    // const coords2 = [second.latitude, second.longitude, second.altitude] as [number, number, number];
-
-    // const text = (this.calculateDistance(coords1, coords2) / 1000).toFixed(3);
-
-    // markerFeature.setStyle(new Style({
-    //   text: new Text({
-    //     text,
-    //     fill: new Fill({ color: '#00F' }),
-    //     stroke: new Stroke({ color: '#000', width: 1 })
-    //   }),
-    // }));
-
     markerFeature.setId(`${distance[0]}_distance_${distance[1]}`);
 
     this.DistanceLayerSource.addFeature(markerFeature);
@@ -385,12 +383,22 @@ class MapCanvas {
     return new Map({
       layers: [
         new TileLayer({ source: this.TileSource }),
+        new Graticule({
+          strokeStyle: new Stroke({
+            color: 'rgba(255,120,0,0.9)',
+            width: 2,
+            lineDash: [0.5, 4],
+          }),
+          showLabels: true,
+          wrapX: false,
+        }),
       ],
       target: 'map'
       ,
       view: new View({
-          center: [-1, -1],
+          center: [0, 0],
           zoom: 3,
+          extent: new View().getProjection().getExtent(),
       }),
       controls: [],
     });
@@ -402,10 +410,8 @@ class MapCanvas {
     setInterval(this.updateFeaturesData.bind(this), 20);
   }
 
-  private async updateFeaturesData() {
-    const { features, idsByAltitude } = await getFeaturesData();
-    console.log('hi');
-    // TODO: set styles
+  public async updateFeaturesData(features: IFeatures, idsByAltitude: number[]) {
+
     if (Object.keys(features).length !== 0) {
       for (const key in features) {
         if (!this.FeaturesObject.hasOwnProperty(key)) {
@@ -434,8 +440,8 @@ class MapCanvas {
               image: new Icon({
                 opacity: settings.alpha,
                 scale: settings.size,
-                src: `http://localhost:8080/public/images/${settings.image}`,
-                rotation: features[key].yaw / 57.2958,
+                src: `/public/images/${settings.image}`,
+                rotation: features[key].yaw / 57.2958 - this.currentRotation,
               }),
             }));
           } else {
@@ -454,8 +460,8 @@ class MapCanvas {
               image: new Icon({
                 opacity: 1,
                 scale: 0.15,
-                src: `http://localhost:8080/public/images/question.png`,
-                rotation: features[key].yaw / 57.2958,
+                src: `/public/images/question.png`,
+                rotation: features[key].yaw / 57.2958 - this.currentRotation,
               }),
             }));
           }
@@ -502,7 +508,7 @@ class MapCanvas {
       this.drawDistance(distance);
     }
 
-    this.updatePolygonsData();
+    // this.updatePolygonsData();
     this.setViewCenter();
   }
 
@@ -532,8 +538,8 @@ class MapCanvas {
       image: new Icon({
         opacity: settings.alpha,
         scale: settings.size,
-        src: `http://localhost:8080/public/images/${settings.image}`,
-        rotation: yaw / 57.2958,
+        src: `/public/images/${settings.image}`,
+        rotation: yaw / 57.2958 - this.currentRotation,
       }),
     }));
   }
