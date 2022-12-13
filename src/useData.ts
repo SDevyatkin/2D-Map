@@ -6,7 +6,7 @@ import { changeImageNames, setMarkerSettings, changePolygonModels } from './stor
 export const useData = () => {
 
   const dispatch = useDispatch();
-  let mapConfig, imageNames, polygonModels, markerSettings, socket;
+  let mapConfig, imageNames, polygonModels, markerSettings;
 
   useEffect(() => {
     mapConfig = getMapURL();

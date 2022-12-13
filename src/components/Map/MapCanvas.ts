@@ -1,8 +1,8 @@
 import { Feature, Graticule, Map, View } from 'ol';
 import { Coordinate, createStringXY } from 'ol/coordinate';
 import { Extent, getCenter } from 'ol/extent';
-import { MultiLineString, Point, Polygon } from 'ol/geom';
-import Geometry, { Type } from 'ol/geom/Geometry';
+import { LineString, MultiLineString, Point, Polygon } from 'ol/geom';
+import { Type } from 'ol/geom/Geometry';
 import Draw from 'ol/interaction/Draw';
 import Modify from 'ol/interaction/Modify';
 import Snap from 'ol/interaction/Snap';
@@ -17,18 +17,17 @@ import Icon from 'ol/style/Icon';
 import Stroke from 'ol/style/Stroke';
 import Style from 'ol/style/Style';
 import Text from 'ol/style/Text';
-import { BASE_URL, getMarkerSettings, getPolygonIcons } from '../../api';
+import { BASE_URL, getMarkerSettings, getPolygonIcons, getRoutes } from '../../api';
 import { IMarkerSettings } from '../../store/modelSettingsSlice';
 import { GreatCircle } from 'arc';
-import { Attribution, FullScreen, MousePosition, OverviewMap, Rotate, ScaleLine, Zoom, ZoomSlider, ZoomToExtent } from 'ol/control';
-import { IFeatures, IFeaturesData } from '../../wsTypes';
-import KOK from './../../assets/images/Jet.png'
-import { threadId } from 'worker_threads';
+import { FullScreen, MousePosition, Rotate, ScaleLine, Zoom, ZoomSlider, ZoomToExtent } from 'ol/control';
+import { IFeatures } from '../../wsTypes';
+import { getVectorContext } from 'ol/render';
 
 type mapObjectType = {
   id: number;
   type: number;
-  parentID: number;
+  parentID: number | string;
   latitude: number;
   longitude: number;
   yaw: number;
@@ -51,13 +50,25 @@ interface IPolygonsObject {
   },
 }
 
+interface IRoutes {
+  [key: number]: number[][]
+}
+
+interface IRoutesColors {
+  [key: number]: string;
+}
+
+interface IDistancesColors {
+  [key: string]: string;
+}
+
 interface IMarkersObject extends IMarkerSettings {}
 
 class MapCanvas {
   private map: Map; 
   private TileSource = new OSM();
-  private ObjectsLayerSource = new VectorSource({});
-  private ObjectsLayer = new VectorLayer({});
+  private ObjectsLayerSource = new VectorSource();
+  private ObjectsLayer = new VectorLayer({ zIndex: 10 });
   private PolygonsLayerSource = new VectorSource({});
   private PolygonLayer = new VectorLayer({});
   private DrawLayerSource = new VectorSource({});
@@ -65,7 +76,11 @@ class MapCanvas {
   private DrawModifier = new Modify({ source: this.DrawLayerSource });
   private DistanceLayerSource = new VectorSource({});
   private DistanceLayer = new VectorLayer({});
-  private DistanceModifier = new Modify({ source: this.DistanceLayerSource });
+  private RoutesLayerSource = new VectorSource({});
+  private RoutesLayer = new VectorLayer({});
+  private GridLayer = new VectorLayer({ renderBuffer: Infinity });
+  private GridLayerSource = new VectorSource({ features: [new Feature(new Point([0, 1]))] });
+  // private DistanceModifier = new Modify({ source: this.DistanceLayerSource });
   private FeaturesObject: FeaturesObjectI = {};
   private PolygonsObject: IPolygonsObject = {};
   private MarkersObject: IMarkersObject = {};
@@ -78,6 +93,10 @@ class MapCanvas {
   private featureInfo: mapObjectType | null = null;
   private userPoints: Coordinate[] = [];
   private distances: [number, number][] = [];
+  private distancesColors: IDistancesColors = {};
+  private routesID: number[] = [];
+  private routes: IRoutes = {};
+  private routesColors: IRoutesColors = {};
   private currentRotation: number = 0;
   private draw: Draw = new Draw({
     source: this.DrawLayerSource,
@@ -88,10 +107,8 @@ class MapCanvas {
     source: this.DrawLayerSource,
   });
 
-  constructor() {
-    this.map = this.createMap();
-
-    console.log(KOK);
+  constructor(divID: string) {
+    this.map = this.createMap(divID);
 
     this.map.addLayer(this.ObjectsLayer);
     this.ObjectsLayer.setSource(this.ObjectsLayerSource);
@@ -136,6 +153,15 @@ class MapCanvas {
       }),
     }));
     // this.map.addInteraction(this.DistanceModifier);
+
+    this.map.addLayer(this.RoutesLayer);
+    this.RoutesLayer.setSource(this.RoutesLayerSource);
+    this.RoutesLayer.setStyle(new Style({
+      stroke: new Stroke({
+        width: 3,
+        color: '#F00',
+      }),
+    }));
 
     this.getMarkerSettings();
 
@@ -213,7 +239,91 @@ class MapCanvas {
 
     this.map.addControl(new ZoomSlider());
 
-    // this.map.addControl(new OverviewMap());
+    this.map.addLayer(this.GridLayer);
+    this.GridLayer.setSource(this.GridLayerSource);
+
+    this.GridLayer.on('prerender', (event) => {
+
+      let unitSplit = 0.1; // every 0.1 m
+      let pxToUnit = this.map.getView().getResolution() as number;
+      let pxSplit = unitSplit / pxToUnit;
+
+      let [xmin, ymin, xmax, ymax] = event.frameState?.extent as Extent;
+
+      while (pxSplit * 2 < 100) {
+        unitSplit *= 2;
+        pxSplit = unitSplit / pxToUnit; // distance between two lines
+      }
+
+      let startX = Math.round(xmin / unitSplit) * unitSplit; // first line
+      let endX = Math.round(xmax / unitSplit) * unitSplit; // last line
+
+      let startY = Math.round(ymin / unitSplit) * unitSplit;
+      let endY = Math.round(ymax / unitSplit) * unitSplit;
+
+      let ctx = getVectorContext(event);
+
+      let lineStyle = new Style({
+        stroke: new Stroke({
+          width: 1,
+          color: 'rgba(255, 0, 0, 0.2)',
+        }),
+      });
+
+      ctx.setStyle(lineStyle);
+
+      // drawing lines
+      for (let i = startX; i <= endX; i += unitSplit) {
+        ctx.drawLineString(new LineString([[i, ymin], [i, ymax]]));
+      }
+
+      for (let i = startY; i <= endY; i += unitSplit) {
+        ctx.drawLineString(new LineString([[xmin, i], [xmax, i]]));
+      }
+
+      let text = new Text({
+        fill: new Fill({
+          color: '#000',
+        }),
+        font: '12px arial',
+        textAlign: 'left',
+      });
+
+      // drawing labels
+      for (let i = startY; i <= endY; i += unitSplit) {
+        text.setText(`${(i / 1000).toFixed(2)} км`);
+        lineStyle.setText(text);
+
+        const extent = event.frameState?.extent as Extent;
+
+        ctx.setStyle(lineStyle);
+        ctx.drawPoint(new Point([extent[0] + 10 * pxToUnit, i + pxToUnit]));
+      }
+
+      text.setRotation(Math.PI / 2);
+
+      for (let i = startX; i <= endX; i += unitSplit) {
+        text.setText(`${(i / 1000).toFixed(2)} км`);
+        lineStyle.setText(text);
+
+        const extent = event.frameState?.extent as Extent;
+
+        ctx.setStyle(lineStyle);
+        ctx.drawPoint(new Point([i + pxToUnit, extent[3] - 10 * pxToUnit]))
+      }
+    });
+
+    // const testFeatute = new Feature();
+    // testFeatute.setGeometry(
+    //   new LineString([[8781000,5662310],[8781000,5668860], [8808040,5668860]])
+    // )
+    // testFeatute.setStyle(new Style({
+    //   stroke: new Stroke({
+    //     width: 2,
+    //     color: 'red',
+    //   }),
+    // }));
+    // this.DrawLayerSource.addFeature(testFeatute)
   }
 
   public setZoomLevel(level: number) {
@@ -240,6 +350,10 @@ class MapCanvas {
     this.DrawLayerSource.clear();
   }
 
+  public getFeatureInfoID() {
+    return this.featureInfoID;
+  }
+
   public setFeatureInfoID() {
     this.featureInfoID = -1;
   }
@@ -250,6 +364,22 @@ class MapCanvas {
 
   public setViewLocked(locked: boolean) {
     this.lockedView = locked;
+  }
+
+  public clearRoutesLayer() {
+    this.RoutesLayerSource.clear();
+  }
+
+  public clearDistanceLayer() {
+    this.DistanceLayerSource.clear();
+  }
+
+  public setDistanceColor(first: number, second: number, color: string) {
+    this.distancesColors[`${first}_distance_${second}`] = color;
+  }
+
+  public setRouteColor(id: number, color: string) {
+    this.routesColors[id] = color;
   }
 
   public getFeatureInfo() {
@@ -266,11 +396,16 @@ class MapCanvas {
 
     const coords = [this.FeaturesObject[id].featureParams.longitude, this.FeaturesObject[id].featureParams.latitude];
 
+    this.centeredObject = id;
     this.map.getView().setCenter(fromLonLat(coords));
   }
 
   public pushDistance(distance: [number, number]) {
     this.distances.push(distance);
+  }
+
+  public pushRoute(id: number) {
+    this.routesID.push(id);
   }
 
   public drawLine() {
@@ -284,8 +419,10 @@ class MapCanvas {
         const extent = feature.getGeometry()?.getExtent() as Extent;
         const coordinate = toLonLat(getCenter(extent));
 
-        if (!feature.getId()) feature.setId(this.userPoints.length);
-        
+        if (!feature.getId() !== undefined) {
+          feature.setId(this.userPoints.length)
+        }
+
         this.userPoints[Number(feature.getId())] = coordinate;
       }
     }
@@ -360,7 +497,40 @@ class MapCanvas {
 
     markerFeature.setId(`${distance[0]}_distance_${distance[1]}`);
 
+    markerFeature.setStyle(new Style({
+      stroke: new Stroke({
+        width: 2,
+        color: this.distancesColors[markerFeature.getId() as string],
+      }),
+    }));
+
     this.DistanceLayerSource.addFeature(markerFeature);
+  }
+
+  public drawRoutes(routes: IRoutes) {
+    for (let key of Object.keys(routes)) {
+      const coordinates = routes[Number(key)].map(point => fromLonLat(point.reverse()));
+      
+
+      if (!this.RoutesLayerSource.getFeatureById(key)) {
+        const geometry = new LineString(coordinates);
+        const feature = new Feature({});
+
+        feature.setGeometry(geometry);
+        feature.setId(key);
+        feature.setStyle(new Style({
+          stroke: new Stroke({
+            width: 2,
+            color: this.routesColors[Number(key)],
+          }),
+        }));
+
+        this.RoutesLayerSource.addFeature(feature);
+      } else {
+        (this.RoutesLayerSource.getFeatureById(key)?.getGeometry() as LineString)
+          .appendCoordinate(coordinates[coordinates.length - 1]);
+      }
+    } 
   }
 
   private addInteractions(mode: string) {
@@ -380,27 +550,18 @@ class MapCanvas {
     }
   }
 
-  private createMap() {
+  private createMap(divID: string) {
 
     return new Map({
       layers: [
         new TileLayer({ source: this.TileSource }),
-        new Graticule({
-          strokeStyle: new Stroke({
-            color: 'rgba(255,120,0,0.9)',
-            width: 2,
-            lineDash: [0.5, 4],
-          }),
-          showLabels: true,
-          wrapX: false,
-        }),
       ],
-      target: 'map'
-      ,
+      target: divID,
       view: new View({
           center: [0, 0],
           zoom: 3,
           extent: new View().getProjection().getExtent(),
+          projection: 'EPSG:3857',
       }),
       controls: [],
     });
@@ -408,8 +569,6 @@ class MapCanvas {
 
   private async getMarkerSettings() {
     this.MarkersObject = await getMarkerSettings();
-
-    // setInterval(this.updateFeaturesData.bind(this), 20);
   }
 
   public async updateFeaturesData(features: IFeatures, idsByAltitude: number[]) {
@@ -449,54 +608,15 @@ class MapCanvas {
               opacity: settings.alpha,
               scale: settings.size,
               src: `${BASE_URL}/public/images/${settings.image}`,
-              rotation: features[key].yaw / 57.2958 - this.currentRotation,
+              rotation: features[key].yaw / 57.2958 + this.currentRotation,
             }));
-
-            // newFeature.setStyle(new Style({
-            //   text: new Text({
-            //     font: '16px Calibri, sans-serif',
-            //     fill: new Fill({ color: '#f00' }),
-            //     stroke: new Stroke({
-            //       color: '#000',
-            //       width: 2,
-            //     }),
-            //     text: String(key),
-            //     offsetX: 30,
-            //     offsetY: 30,
-            //   }),
-            //   image: new Icon({
-            //     opacity: settings.alpha,
-            //     scale: settings.size,
-            //     src: `${BASE_URL}/public/images/${settings.image}`,
-            //     rotation: features[key].yaw / 57.2958 - this.currentRotation,
-            //   }),
-            // }));
           } else {
-            // newFeature.setStyle(new Style({
-            //   text: new Text({
-            //     font: '16px Calibri, sans-serif',
-            //     fill: new Fill({ color: '#f00' }),
-            //     stroke: new Stroke({
-            //       color: '#000',
-            //       width: 2,
-            //     }),
-            //     text: String(key),
-            //     offsetX: 30,
-            //     offsetY: 30,
-            //   }),
-            //   image: new Icon({
-            //     opacity: 1,
-            //     scale: 0.15,
-            //     src: `${BASE_URL}/public/images/question.png`,
-            //     rotation: features[key].yaw / 57.2958 - this.currentRotation,
-            //   }),
-            // }));
             newFeatureStyle.setImage(
               new Icon({
               opacity: 1,
               scale: 0.15,
               src: `${BASE_URL}/public/images/question.png`,
-            rotation: features[key].yaw / 57.2958 - this.currentRotation,
+              rotation: features[key].yaw / 57.2958 + this.currentRotation,
             }));
           }
 
@@ -513,38 +633,31 @@ class MapCanvas {
         } else {
           this.FeaturesObject[features[key].id].featureParams = features[key];
           this.moveObjectLayerFeature(features[key].id, features[key].longitude, features[key].latitude);
-          this.FeaturesObject[features[key].id].style.getImage().setRotation(features[key].yaw / 57.2958)
+          this.FeaturesObject[features[key].id].style.getImage().setRotation((features[key].yaw / 57.2958) + this.currentRotation)
         }
 
       }
 
-      if (this.idsByAltitude.length === idsByAltitude.length) {
+      this.idsByAltitude = idsByAltitude;
+        this.ObjectsLayerSource.clear();
         for (let i = 0; i < this.idsByAltitude.length; i++) {
-          if (this.idsByAltitude[i] !== idsByAltitude[i]) {
-            this.idsByAltitude = idsByAltitude;
-            this.ObjectsLayerSource.clear();
-
-            for (let i = 0; i < this.idsByAltitude.length; i++) {
-              this.ObjectsLayerSource.addFeature(this.FeaturesObject[this.idsByAltitude[i]].feature);
-            }
+          if (this.FeaturesObject[this.idsByAltitude[i]].featureParams.parentID !== 'death') {
+            this.ObjectsLayerSource.addFeature(this.FeaturesObject[this.idsByAltitude[i]].feature);
           }
         }
-      } else {
-        this.idsByAltitude = idsByAltitude;
-        this.ObjectsLayerSource.clear();
-
-        for (let i = 0; i < this.idsByAltitude.length; i++) {
-          this.ObjectsLayerSource.addFeature(this.FeaturesObject[this.idsByAltitude[i]].feature);
-        }
-      }
     }
 
     this.DistanceLayerSource.clear();
     for (let distance of this.distances) {
-      this.drawDistance(distance);
+      if (
+        this.FeaturesObject[distance[0]].featureParams.parentID !== 'death' && 
+        this.FeaturesObject[distance[1]].featureParams.parentID !== 'death'
+      ) {
+        this.drawDistance(distance);
+      }
     }
 
-    // this.updatePolygonsData();
+    this.updatePolygonsData();
     this.setViewCenter();
   }
 
@@ -673,7 +786,7 @@ class MapCanvas {
     const geometry = feature.getGeometry();
 
     const angle = - (yaw - this.PolygonsObject[id].yawOld);
-    geometry?.rotate(angle / 57.2958, getCenter(geometry.getExtent()));
+    geometry?.rotate(angle / 57.2958, [0, 0]);
     this.PolygonsObject[id].yawOld = yaw;
   }
 
@@ -684,9 +797,8 @@ class MapCanvas {
         this.FeaturesObject[this.centeredObject].featureParams.latitude,
       ];
 
-      // console.log(coords, this.lockedView);
-
       if (this.lockedView) {
+        console.log(this.centeredObject, this.lockedView)
         this.map.getView().setCenter(fromLonLat([...coords]));
         this.map.getView().setZoom(this.zoomLevel);
       }

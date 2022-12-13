@@ -4,13 +4,6 @@ import { selectDrawingMode } from '../../store/drawingSettingsSlice';
 import { RootState } from '../../store/store';
 import Select from '../Select';
 
-const data = [
-  ['LineString', 'Непрерывная линия'],
-  ['Polygon', 'Зона'],
-  ['Circle', 'Окружность'],
-  ['Point', 'Точка'],
-];
-
 const DrawingPanel: FC = () => {
 
   const dispatch = useDispatch();
@@ -26,7 +19,8 @@ const DrawingPanel: FC = () => {
     Map.changeInteractions(event.target.value);
   };
 
-  // console.log((Map.calculateDistance([5, 5, 0], [5, 5, 1000]) / 1000).toFixed(3));
+  const drawLine = () => Map.drawLine();
+  const cleanDrawSource = () => Map.cleanDrawSource();
 
   return (
     <div className='sidebar-panel'>
@@ -36,8 +30,8 @@ const DrawingPanel: FC = () => {
         <Select data={Object.entries(drawingModes)} value={selectedDrawingMode} noneField='Выкл' onChange={onChange} />
       </div>
       <div className='buttons'> 
-        <button className='primary-btn sidebar-btn' onClick={useCallback(() => Map.cleanDrawSource(), [])}>очистить</button>
-        <button className='primary-btn sidebar-btn' onClick={useCallback(() => Map.drawLine(), [])}>построить маршрут</button>
+        <button className='primary-btn sidebar-btn' onClick={cleanDrawSource}>очистить</button>
+        <button className='primary-btn sidebar-btn' onClick={drawLine}>построить маршрут</button>
       </div>
     </div>
   );

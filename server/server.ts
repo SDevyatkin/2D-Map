@@ -1,14 +1,13 @@
 import net from 'net';
 import config from 'config';
-import dgram, { Socket } from 'dgram';
+import dgram from 'dgram';
 import fs from 'fs';
-import express from 'express';
+import express, { IRoute } from 'express';
 import path from 'path';
-import engines from 'consolidate';
 import cors from 'cors';
 import ws from 'ws';
-import { IMapConfig, IMapMetaData } from './interfaces';
 import { calculateDistance, distanceRoute } from './utils';
+import { IFeatures, IRoutes } from './interfaces';
 
 interface IClients{
     [key: number]: WebSocket 
@@ -17,8 +16,9 @@ interface IClients{
 const PORT: number = 50051;
 const HOST: string = config.get('TCPHost');
 let socketList: IClients = {};
-let socketMapDataFreq: number = 200;
+let socketMapDataFreq: number = 17;
 let clientID: number = 1;
+let routesID: number[] = [];
 
 
 // TCP
@@ -65,12 +65,14 @@ const jsonData = {};
 
 let block = false;
 
+fs.writeFileSync('./JSON/Routes.json', JSON.stringify({}));
+
 const getData = () => {
     const serverData = dgram.createSocket('udp4');
 
     serverData.on('error', () => serverData.close());
 
-    serverData.on('message', (message, remoteInfo) => {
+    serverData.on('message', (message) => {
         try {
             const parsedMessage = JSON.parse(message.toString());
 
@@ -80,12 +82,17 @@ const getData = () => {
             console.log('-------------------------------------------');
             const keys = Object.keys(socketList);
             if (!block) {
+                const routes = saveRoutes(jsonData);
+                Object.keys(routes).map(key => {
+                  if (routesID.indexOf(Number(key)) === -1) {
+                    delete routes[key];
+                  }
+                });
                 for (let i = 0; i < keys.length; i++) {
-                    sendMapData(jsonData, socketList[keys[i]]);
+                    sendData(jsonData, routes, socketList[keys[i]]);
                 }
                 block = true;
                 setTimeout(() => { block = false }, socketMapDataFreq);
-                saveRoutes(jsonData);
             }
         } catch (error) {
             console.log(error.message);
@@ -109,16 +116,25 @@ fs.readdir(imagesFolder, (_, files) => {
     files.forEach((file) => imageNames.push(file));
 });
 
-const saveRoutes = (data) => {
-  const routes = JSON.parse(fs.readFileSync('Routes.json', 'utf-8'));
+const saveRoutes = (data: IFeatures) => {
+  const routes = JSON.parse(fs.readFileSync('./JSON/Routes.json', 'utf-8'));
 
   for (let id of Object.keys(data)) {
     if (routes.hasOwnProperty(id)) {
-      routes[id].push([data[id].latitude, data[id].longitude]);
+      const lastPoint = routes[id][routes[id].length - 1]
+
+      if (!(lastPoint[0] === data[id].latitude && lastPoint[1] === data[id].longitude)) {
+        routes[id].push([data[id].latitude, data[id].longitude]);
+      }
+      
     } else {
       routes[id] = [[data[id].latitude, data[id].longitude]];
     }
   }
+
+  fs.writeFileSync('./JSON/Routes.json', JSON.stringify(routes));
+
+  return routes;
 };
 
 // Express
@@ -200,13 +216,13 @@ app.get('/Distance/:first/:second', (request: express.Request, response: express
     response.send({ distance, distanceCoords });
   } catch (error) {
     console.log(error.message);
-    response.status(400);
+    response.sendStatus(400);
   }
 });
 
 app.get('/Route/:id', (request: express.Request, response: express.Response) => {
   try {
-    const routes = JSON.parse(fs.readFileSync('Routes.json', 'utf-8'));
+    const routes = JSON.parse(fs.readFileSync('./JSON/Routes.json', 'utf-8'));
     const route = routes[request.params.id];
 
     response.send({ route });
@@ -216,10 +232,21 @@ app.get('/Route/:id', (request: express.Request, response: express.Response) => 
   }
 });
 
-app.post('/MarkerSettings', (request, response: express.Response) => {
+app.post('/Route/:id', (request: express.Request, response: express.Response) => {
   try {
-    console.log(JSON.parse(request.body));
-    fs.writeFileSync('./JSON/MarkerSettings.json', JSON.parse(request.body));
+    const id = Number(request.params.id)
+    routesID.push(id);
+    response.send(`Пройденный путь объекта ${id} построен.`);
+  } catch (error) {
+    console.log(error.message);
+    response.sendStatus(400);
+  }
+});
+
+app.post('/MarkerSettings', (request: express.Request, response: express.Response) => {
+  try {
+    console.log(request.body);
+    fs.writeFileSync('./JSON/MarkerSettings.json', JSON.stringify(request.body));
     response.send('Настройки маркеров обновлены.');
   } catch (error) {
     console.log(error.message);
@@ -229,10 +256,11 @@ app.post('/MarkerSettings', (request, response: express.Response) => {
 
 app.post('/PolygonIcons', (request: express.Request, response: express.Response) => {
   try {
-    const polygonModels = JSON.parse(fs.readFileSync('PolygonModels.json', 'utf-8'));
-    polygonModels[request.body.name] = request.body.data;
+    const polygonModels = JSON.parse(fs.readFileSync('./JSON/PolygonIcons.json', 'utf-8'));
 
-    fs.writeFileSync('./JSON/PolygonIcons.json', polygonModels);
+    polygonModels[request.body.name] = request.body.points;
+
+    fs.writeFileSync('./JSON/PolygonIcons.json', JSON.stringify(polygonModels));
     response.send('Иконка добавлена.');
   } catch (error) {
     console.log(error.message);
@@ -253,10 +281,20 @@ app.post('/MapViewSettings', (request: express.Request, response: express.Respon
 
 setTimeout(getData, 0);
 
-// ===================================================================
+// WebSocket Server ===================================================================
 
-function sendMapData(mapData: any, wsClient: WebSocket | null) {
-    wsClient.send(JSON.stringify(mapData));
+const sendData = (features: IFeatures, routes: IRoutes, wsClient: WebSocket | null) => {
+  const sub = [];
+  
+  for (let key of Object.keys(features)) {
+    sub.push([key, features[key].altitude])
+  }
+
+  const idsByAltitude = sub.sort((a, b) => a[1] - b[1]).map(item => item[0]);
+
+  const data = { features, idsByAltitude, routes };
+
+  wsClient.send(JSON.stringify(data));
 }
 
 const wsServer = new ws.Server({ port: 3001 });

@@ -1,6 +1,6 @@
 import { Tooltip } from '@mui/material';
 import { ChangeEvent, FC, MouseEvent, useEffect, useState } from 'react';
-import { saveNewPolygonModel } from '../../api';
+import { saveNewPolygonIcon } from '../../api';
 import { DetectPolygonManager } from '../../DetectPolygonManager';
 import { ModalProps } from './modal.interface';
 import ModalOverlay from './ModalOverlay';
@@ -43,12 +43,14 @@ const ModelCreation: FC<ModalProps> = ({ handleClose }) => {
       point[1] = (point[1] - center[1]) * (meterWidth / pixelWidth);
     });
 
-    saveNewPolygonModel(modelName, points);
+    saveNewPolygonIcon(modelName, points);
   };
+
+  const stopPropagation = (event: MouseEvent) => event.stopPropagation();
 
   return (
     <ModalOverlay handleClose={handleClose} >
-      <div className='modal' onClick={(event: MouseEvent) => event.stopPropagation()}>
+      <div className='modal' onClick={stopPropagation}>
         <canvas id='polygonManager' width={900} height={700} />
         <div className='canvas-settings'>
           <div className='canvas-slider'>

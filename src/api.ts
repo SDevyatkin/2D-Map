@@ -11,13 +11,6 @@ export const getMapURL = async () => {
   return mapURL;
 };
 
-// export const getFeaturesData = async () => {
-
-//   const response = await fetch(`${BASE_URL}/MapData`, { mode: 'cors' });
-//   const mapData = await response.json();
-
-//   return mapData;
-// };
 
 export const getMapViewSettings = async () => {
 
@@ -31,8 +24,6 @@ export const getImageNames = async () => {
 
   const response = await fetch(`${BASE_URL}/ImagesNames`, { mode: 'cors' });
   const imageNames = await response.json();
-  
-  console.log(imageNames.data);
 
   return imageNames.data;
 };
@@ -72,34 +63,53 @@ export const getDistance = async (first: number, second: number) => {
   return distance;
 };
 
-export const saveNewPolygonModel = async (modelName: string, modelPoints: number[][]) => {
-  const response = await fetch(`${BASE_URL}/client/SaveNewModel`, {
+export const getRoutes = async (ids: number[]) => {
+  const response = await fetch(`${BASE_URL}/Routes`, {
+    headers: {
+      ids: JSON.stringify(ids),
+    },
+    mode: 'cors'
+  });
+  const routes = await response.json();
+  
+  return routes;
+};
+
+export const pushRouteID = async (id: number) => {
+  try {
+    await fetch(`${BASE_URL}/Route/${id}`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const saveNewPolygonIcon = async (modelName: string, modelPoints: number[][]) => {
+  const response = await fetch(`${BASE_URL}/PolygonIcons`, {
     method: 'POST',
     mode: 'cors',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ [modelName]: modelPoints }),
+    body: JSON.stringify({ 
+      name: modelName,
+      points: modelPoints 
+    }),
   });
 
   return response.status;
 };
 
 export const saveMarkerSettings = async (settings: IMarkerSettings) => {
-  console.log(JSON.stringify(settings));
-
   try {
-    // fetch(`${BASE_URL}/SaveMarkerSettings`, {
-    //   method: 'POST',
-    //   mode: 'cors',
-    //   headers: {
-    //     'Content-Type': 'application/json; charset=UTF-8',
-    //   },
-    //   body: JSON.stringify(settings),
-    // });
     await axios.post(
       `${BASE_URL}/MarkerSettings`,
-      settings,
+      JSON.stringify(settings),
       {
         headers: {
           'Content-Type': 'application/json',
@@ -113,9 +123,3 @@ export const saveMarkerSettings = async (settings: IMarkerSettings) => {
 
   
 };
-
-// export const getFeaturesDataWS = async () => {
-//   const socket = new WebSocket('ws://localhost:3002');
-
-//   return socket; 
-// };

@@ -1,19 +1,31 @@
-import { FC, SetStateAction, useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSelector } from 'react-redux';
-import { mapObjectType } from './components/Map/Map.interface';
 import { RootState } from './store/store';
+
+interface IFeatureInfo {
+  id: number;
+  type: number;
+  state?: 0 | 1 | 2;
+  longitude: number;
+  latitude: number;
+  yaw: number;
+  altitude: number;
+  parentID: number;
+}
 
 const FeatureInfoModal: FC = () => {
 
-  const [info, setInfo] = useState<any | null>(null);
+  const [info, setInfo] = useState<IFeatureInfo>();
 
-  const Map = useSelector((state: RootState) => state.Map.map);
-;
+  const { Map, featureInfo } = useSelector((state: RootState) => ({
+    Map: state.Map.map,
+    featureInfo: state.featuresData.data,
+  }));
 
   useEffect(() => {
-    setInterval(() => setInfo(Map.getFeatureInfo()), 20)
-  });
+    setInfo(featureInfo[Map.getFeatureInfoID()]);
+  }, [featureInfo]);
   
   const handleClose = () => {
     Map.setFeatureInfoID();
@@ -22,7 +34,7 @@ const FeatureInfoModal: FC = () => {
   return createPortal(
     <>
       {
-        info !== null &&
+        info &&
           <div className='feature-info-modal'>
             <div>Номер объекта: {info.id}</div>
             <div>Тип объекта: {info.type}</div>

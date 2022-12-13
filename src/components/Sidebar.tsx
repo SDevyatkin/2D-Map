@@ -1,10 +1,9 @@
 import { FC, MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-// import { getFeaturesDataWS } from '../api';
 import DistancePanel from './Panels/DistancePanel';
 import DrawingPanel from './Panels/DrawingPanel';
 import MapSettingsPanel from './Panels/MapSettingsPanel';
-import ModelsSettingsPanel from './Panels/ModelsSettingsPanel';
+import RoutesPanel from './Panels/RoutesPanel';
 
 interface SidebarProps {
   opened: boolean
@@ -20,7 +19,7 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
         <DrawingPanel />
         <MapSettingsPanel />
         <DistancePanel />
-        {/* <ModelsSettingsPanel /> */}
+        <RoutesPanel />
       </div>
       <button className={`toggle-sidebar-btn`} onClick={handleSidebar}>
         &#10095;

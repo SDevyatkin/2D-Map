@@ -2,7 +2,6 @@ import { FC, MouseEvent, useState } from 'react';
 import logo from '../assets/logo.png';
 import ModelCreation from './Modals/ModelCreation';
 import ModelSetting from './Modals/ModelSetting';
-import Sidebar from './Sidebar';
 
 interface PanelProps {
   handleSidebar: (event: MouseEvent) => void;
@@ -32,6 +31,9 @@ const Panel: FC<PanelProps> = ({ handleSidebar }) => {
     setFreqChangingMode(true);
   };
 
+  const offIconCreationMode = () => { setIconCreationMode(false) };
+  const offTypeSettingsMode = () => { setTypeSettingsMode(false) };
+
   return (
     <>
       <div className='header'>
@@ -42,8 +44,8 @@ const Panel: FC<PanelProps> = ({ handleSidebar }) => {
           <button className='primary-btn' onClick={handleTypeSettingsMode}>соотношение типов</button>
         </div>
       </div>
-      { iconCreationMode && <ModelCreation handleClose={() => setIconCreationMode(false)} /> }
-      { typeSettingsMode && <ModelSetting handleClose={() => setTypeSettingsMode(false)} /> }
+      { iconCreationMode && <ModelCreation handleClose={offIconCreationMode} /> }
+      { typeSettingsMode && <ModelSetting handleClose={offTypeSettingsMode} /> }
     </>
   );
 };

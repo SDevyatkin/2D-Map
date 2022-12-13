@@ -1,14 +1,11 @@
-import { ChangeEvent, FC, useContext, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FC } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectPinObject } from '../../store/pinObjectsSlice';
 import { RootState } from '../../store/store';
 import { changeZoomLevel } from '../../store/zoomLevelSlice';
-import { udpJsonDataType } from '../Map/Map.interface';
 import Select from '../Select';
 
 const MapSettingsPanel: FC = () => {
-
-  // const [pinObjects, setPinObjects] = useState<number[]>([]);
 
   const { Map, pinObjects, selectedPinObject, zoomLevel, viewLocked } = useSelector((state: RootState) => ({
     Map: state.Map.map,
@@ -17,8 +14,6 @@ const MapSettingsPanel: FC = () => {
     zoomLevel: state.zoomLevel.level,
     viewLocked: state.Map.map.getViewLocked()
   }));
-
-  // useEffect(() => { setInterval(() => setPinObjects(Map.getPinObjects()), 20) });
 
   const dispatch = useDispatch();
 
@@ -42,8 +37,6 @@ const MapSettingsPanel: FC = () => {
   const handleViewLocked = (event: ChangeEvent<HTMLInputElement>) => {
     Map.setViewLocked(event.target.checked);
   };
-
-  // console.log(_pinObjects);
 
   return (
     <div className='sidebar-panel'>

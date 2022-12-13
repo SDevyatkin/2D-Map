@@ -5,13 +5,10 @@ import Select from '../Select';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { changeImage, changeMarkerSettings, changeModel, changeOpacity, changeSize, changeType } from '../../store/modelSettingsSlice';
-import { getImageNames, saveMarkerSettings } from '../../api';
 import TableRow from './TableRow';
 import KOK from '../../assets/images/Jet.png';
 
 const ModelSetting: FC<ModalProps> = ({ handleClose }) => {
-
-  console.log(KOK);
 
   const { type, image, size, opacity, model, imageNames, polygonModels, markerSettings } = useSelector((state: RootState) => state.modelSettings);
   const dispatch = useDispatch();
@@ -42,9 +39,11 @@ const ModelSetting: FC<ModalProps> = ({ handleClose }) => {
     dispatch(changeMarkerSettings( { type, image, size, opacity, model }));
   };
 
+  const stopPropagation = (event: MouseEvent) => event.stopPropagation()
+
   return (
     <ModalOverlay handleClose={handleClose}>
-      <div className='modal' onClick={(event: MouseEvent) => event.stopPropagation()}>
+      <div className='modal' onClick={stopPropagation}>
         <div className='table'>
           {
             Object.entries(markerSettings).map((data, index) => <TableRow key={data[0]} data={data} index={index}/>)

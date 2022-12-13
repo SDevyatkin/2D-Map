@@ -1,19 +1,15 @@
-import { createContext, MouseEvent, useEffect, useState } from 'react';
+import { MouseEvent, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import Map2D from './components/Map/Map';
-import MapCanvas from './components/Map/MapCanvas';
-import NewSidebar from './components/NewSidebar';
-// import MapObject from './components/Map/MapObject';
 import Panel from './components/Panel';
 import Sidebar from './components/Sidebar';
 import FeatureInfoModal from './FeatureInfoModal';
-import { setMap } from './store/mapSlice';
+import MapsWrapper from './MapWrapper';
+import { setFeaturesData } from './store/featuresDataSlice';
 import { changePinObjects } from './store/pinObjectsSlice';
 import { RootState } from './store/store';
 import { useData } from './useData';
 
 const App = (): JSX.Element => {
-
   const dispatch = useDispatch();
   const { Map } = useSelector((state: RootState) => ({ Map: state.Map.map }));
 
@@ -26,11 +22,16 @@ const App = (): JSX.Element => {
 
     ws.addEventListener('message', (event) => {
       const data = JSON.parse(event.data);
-      dispatch(changePinObjects(Object.keys(data).map(id => Number(id))));
-      Map.updateFeaturesData(data, Object.keys(data).map(id => Number(id)));
-    });
+      const features = data.features;
+      const idsByAltitude = data.idsByAltitude;
+      const routes = data.routes;
 
-    dispatch(changePinObjects(Map.getPinObjects().map(item => Number(item))));
+      dispatch(changePinObjects(Object.keys(features).map(id => Number(id)).filter(id => features[id].parentID !== 'death')));
+      Map.updateFeaturesData(features, idsByAltitude);
+      dispatch(setFeaturesData(features));
+
+      Map.drawRoutes(routes);
+    });
   }, []);
   
   const handleSidebar = (event: MouseEvent) => {
@@ -40,10 +41,9 @@ const App = (): JSX.Element => {
   return (
     <div>
       <Panel handleSidebar={handleSidebar} />
-      {/* <Map2D /> */}
+      
       <Sidebar opened={sidebarOpened} handleSidebar={handleSidebar} />
-      {/* <NewSidebar /> */}
-      {/* <FeatureInfoModal /> */}
+      <FeatureInfoModal />
     </div>
   );
 }

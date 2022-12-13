@@ -2,19 +2,19 @@ import { ChangeEvent, FC, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import Select from '../Select';
+import ColorInput from './ColorInput';
 
 const DistancePanel: FC = () => {
 
-  const [pinObjects, setPinObjects] = useState<number[]>([]);
   const [firstObject, setFirstObject] = useState<number | 'None'>('None');
   const [secondObject, setSecondObject] = useState<number | 'None'>('None');
   const [buttonDisabled, setButtonDisabled] = useState<boolean>(true);
+  const [color, setColor] = useState<string>('#000');
 
-  const { Map } = useSelector((state: RootState) => ({
+  const { Map, pinObjects } = useSelector((state: RootState) => ({
     Map: state.Map.map,
+    pinObjects: state.pinObjects.objects,
   }));
-
-  // useEffect(() => { setInterval(() => setPinObjects(Map.getPinObjects()), 20) });
 
   const handleFirstObject = (event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
@@ -24,7 +24,7 @@ const DistancePanel: FC = () => {
 
   useEffect(() => {
     setButtonDisabled(firstObject === 'None' || secondObject === 'None');
-  }, [firstObject, secondObject])
+  }, [firstObject, secondObject]);
 
   const handleSecondObject = (event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
@@ -33,9 +33,18 @@ const DistancePanel: FC = () => {
   };
 
   const drawDistance = () => {
+    Map.setDistanceColor(firstObject as number, secondObject as number, color);
     Map.pushDistance([firstObject as number, secondObject as number]);
     setFirstObject('None');
     setSecondObject('None');
+  };
+
+  const clearDistanceLayer = () => {
+    Map.clearDistanceLayer();
+  };
+
+  const handleColor = (color: string) => {
+    setColor(color);
   };
 
   return (
@@ -49,8 +58,10 @@ const DistancePanel: FC = () => {
         <span>Объект 2</span>
         <Select data={pinObjects.filter(pin => pin !== firstObject)} value={secondObject} noneField='-' onChange={handleSecondObject} />
       </div>
+      <ColorInput sendColor={handleColor} />
       <div className='buttons'>
         <button className='primary-btn sidebar-btn' disabled={buttonDisabled} onClick={drawDistance}>построить</button>
+        <button className='primaty-btn sidebar-btn' onClick={clearDistanceLayer}>очистить</button>
       </div>
     </div>
   );

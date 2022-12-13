@@ -33,12 +33,15 @@ input {
   width: 150px;
   text-align: center;
   border: none;
+}
+
+input {
   border-radius: 5%;
 }
 
 #map {
   position: relative;
-  display: flex;
+  display: hidden;
   flex-direction: row-reverse;
   align-items: stretch;
   width: 100vw; 
@@ -81,7 +84,7 @@ input {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 5vh;
+  height: 50px;
   top: 0;
   width: 100vw;
   padding: 0 20px;
@@ -162,7 +165,7 @@ input {
   font-weight: 300;
 }
 
-.selector {
+.selector, .color-input {
   position: relative;
   display: flex;
   gap: 10px;
@@ -177,7 +180,19 @@ input {
   width: 150px;
 }
 
-.selector span {
+.color-input input {
+  width: 120px;
+}
+
+.color-example {
+  height: 17px;
+  width: 17px;
+  border: 1px solid #000;
+  border-radius: 3px;
+}
+
+.selector span,
+.color-input span {
   display: block;
   width: 135px;
 }
@@ -594,4 +609,59 @@ input {
   background-image: url('./assets/compass.svg');
   background-position: center;
   background-size: contain;
+}
+
+/* Splitter styles */
+
+.maps-wrapper {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  background-color: lightgrey;
+}
+
+.map {
+  position: absolute;
+  background-color: black;
+  max-width: 100%;
+  max-height: 100%;
+  z-index: 10000;
+}
+
+.splitter-h {
+  position: absolute;
+  height: 10px;
+  width: 100%;
+  left: 0;
+  background-color: aqua;
+  z-index: 10000;
+}
+
+.splitter-v {
+  position: absolute;
+  height: 100%;
+  width: 10px;
+  top: 0;
+  background-color: aqua;
+  z-index: 10000;
+}
+
+#map1 {
+  top: 0;
+  left: 0;
+}
+
+#map2 {
+  top: 0;
+  left: 51%;
+}
+
+#map3 {
+  bottom: 0;
+  left: 0;
+}
+
+#map4 {
+  bottom: 0;
+  right: 0;
 }

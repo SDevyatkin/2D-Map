@@ -5,6 +5,7 @@ import modelSettingsReducer from './modelSettingsSlice';
 import thunk from 'redux-thunk';
 import drawingSettingsSlice from './drawingSettingsSlice';
 import mapReducer from './mapSlice';
+import featuresDataSlice from './featuresDataSlice';
 
 export const reducer = combineReducers({
   Map: mapReducer,
@@ -12,6 +13,7 @@ export const reducer = combineReducers({
   zoomLevel: zoomLevelReducer,
   modelSettings: modelSettingsReducer,
   drawingSettings: drawingSettingsSlice,
+  featuresData: featuresDataSlice,
 });
 
 export const store = configureStore({

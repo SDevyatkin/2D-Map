@@ -4,16 +4,16 @@ import App from './App';
 import { StrictMode } from 'react';
 import { Provider } from 'react-redux';
 import { store } from './store/store';
-import RLayersMap from './RLayersMap';
+import MapsWrapper from './MapWrapper';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
 root.render(
   <StrictMode>
+    {/* <MapsWrapper /> */}
     <Provider store={store} >
       <App />
-      {/* <RLayersMap /> */}
     </Provider>
   </StrictMode>
 );

@@ -54,6 +54,10 @@ export interface UserSettings {
   markersData?: IMapMetaData[];
 }
 
+export interface IRoutes {
+  [key: number]: number[][];
+}
+
 export interface IWidgets {
   [key: string]: {
     centeredFeature: number,
