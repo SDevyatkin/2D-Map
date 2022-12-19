@@ -14,7 +14,7 @@ const ColorInput: FC<Props> = ({ sendColor }) => {
   }, [colorExample]);
 
   const handleColor = (event: ChangeEvent<HTMLInputElement>) => {
-    const color = event.target.value;
+    const color = event.target.value.toUpperCase();
 
     setColorInput(color);
 

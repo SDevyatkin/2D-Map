@@ -1,5 +1,6 @@
 import { FC, MouseEvent, useState } from 'react';
 import logo from '../assets/logo.png';
+import menu from '../assets/burger-menu.png';
 import ModelCreation from './Modals/ModelCreation';
 import ModelSetting from './Modals/ModelSetting';
 
@@ -37,6 +38,9 @@ const Panel: FC<PanelProps> = ({ handleSidebar }) => {
   return (
     <>
       <div className='header'>
+        <button onClick={handleSidebar}>
+          <img src={menu} />
+        </button>
         <img className='logo' src={logo} />
         <div className='header-btns'>
           {/* <button className='primary-btn' onClick={handleFreqChangingMode}>обновлений/сек</button> */}

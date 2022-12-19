@@ -75,9 +75,9 @@ export const getRoutes = async (ids: number[]) => {
   return routes;
 };
 
-export const pushRouteID = async (id: number) => {
+export const pushRouteID = async (id: number, mapID: string) => {
   try {
-    await fetch(`${BASE_URL}/Route/${id}`, {
+    await fetch(`${BASE_URL}/Route/${id}/${mapID}`, {
       method: 'POST',
       mode: 'cors',
       headers: {

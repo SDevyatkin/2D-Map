@@ -7,10 +7,10 @@ import path from 'path';
 import cors from 'cors';
 import ws from 'ws';
 import { calculateDistance, distanceRoute } from './utils';
-import { IFeatures, IRoutes } from './interfaces';
+import { IFeatures, IRoutes, IRoutesByMap } from './interfaces';
 
-interface IClients{
-    [key: number]: WebSocket 
+interface IClients {
+  [key: number]: WebSocket;
 }
 
 const PORT: number = 50051;
@@ -19,6 +19,7 @@ let socketList: IClients = {};
 let socketMapDataFreq: number = 17;
 let clientID: number = 1;
 let routesID: number[] = [];
+const routesByMap: IRoutesByMap = {};
 
 
 // TCP
@@ -232,9 +233,17 @@ app.get('/Route/:id', (request: express.Request, response: express.Response) => 
   }
 });
 
-app.post('/Route/:id', (request: express.Request, response: express.Response) => {
+app.post('/Route/:id/:mapID', (request: express.Request, response: express.Response) => {
   try {
     const id = Number(request.params.id)
+    const mapID = request.params.mapID;
+
+    if (routesByMap.hasOwnProperty(mapID)) {
+      routesByMap[mapID].push(Number(request.params.id));
+    } else {
+      routesByMap[mapID] = [Number(request.params.id)];
+    }
+
     routesID.push(id);
     response.send(`Пройденный путь объекта ${id} построен.`);
   } catch (error) {
@@ -292,7 +301,7 @@ const sendData = (features: IFeatures, routes: IRoutes, wsClient: WebSocket | nu
 
   const idsByAltitude = sub.sort((a, b) => a[1] - b[1]).map(item => item[0]);
 
-  const data = { features, idsByAltitude, routes };
+  const data = { features, idsByAltitude, routes, routesByMap };
 
   wsClient.send(JSON.stringify(data));
 }

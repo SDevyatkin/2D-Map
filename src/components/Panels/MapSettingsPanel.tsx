@@ -1,4 +1,4 @@
-import { ChangeEvent, FC } from 'react';
+import { ChangeEvent, FC, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectPinObject } from '../../store/pinObjectsSlice';
 import { RootState } from '../../store/store';
@@ -7,13 +7,20 @@ import Select from '../Select';
 
 const MapSettingsPanel: FC = () => {
 
-  const { Map, pinObjects, selectedPinObject, zoomLevel, viewLocked } = useSelector((state: RootState) => ({
-    Map: state.Map.map,
+  const [viewLocked, setViewLocked] = useState<boolean>(false);
+
+  const { Map, pinObjects, selectedPinObject, zoomLevel } = useSelector((state: RootState) => ({
+    Map: state.Map.maps[`map${state.Map.selectedMap}`],
     pinObjects: state.pinObjects.objects,
     selectedPinObject: state.pinObjects.selected,
     zoomLevel: state.zoomLevel.level,
-    viewLocked: state.Map.map.getViewLocked()
   }));
+
+  useEffect(() => {
+    if (!Map) return;
+
+    setViewLocked(Map.getViewLocked());
+  }, [Map]);
 
   const dispatch = useDispatch();
 
@@ -30,11 +37,13 @@ const MapSettingsPanel: FC = () => {
   };
 
   const handleZoomLevelChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    console.log(Map);
     dispatch(changeZoomLevel(Number(event.target.value)));
     Map.setZoomLevel(Number(event.target.value));
   };
 
   const handleViewLocked = (event: ChangeEvent<HTMLInputElement>) => {
+    setViewLocked(event.target.checked);
     Map.setViewLocked(event.target.checked);
   };
 

@@ -54,4 +54,8 @@ export interface UserSettings {
 
 export type IImagesNames = string[];
 
+export interface IRoutes {
+  [key: string]: [number, number][]
+};
+
 // export interface IInitialSettings extends  {}

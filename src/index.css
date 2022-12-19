@@ -52,13 +52,23 @@ input {
   z-index: 0;
 }
 
+#mapID {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 24px;
+  z-index: 2;
+  user-select: none;
+}
+
 #mouse-position {
   position: absolute;
   width: 250px;
   background-color: transparent;
   bottom: 30px;
   left: calc(50% - 85px);
-  z-index: 4;
+  z-index: 2;
+  user-select: none;
 }
 
 #popup {
@@ -81,6 +91,7 @@ input {
 }
 
 .header {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -97,8 +108,10 @@ input {
 }
 
 .logo {
-  height: 4vh;
+  position: absolute;
+  height: 40px;
   width: auto;
+  left: calc(50% - 56px);
 }
 
 .primary-btn {
@@ -120,7 +133,6 @@ input {
   font-weight: 300;
   border: none;
   background: none;
-  transform: rotate(45deg);
 }
 
 .sidebar {
@@ -128,14 +140,16 @@ input {
   display: none;
   gap: 30px;
   flex-direction: column;
+  top: 50px;
   left: 0;
   width: 350px;
-  height: 100%;
+  height: calc(100% - 50px);
   padding: 40px 20px;
   background-color: var(--primary);
   box-shadow: 10px 0 20px rgba(0,0,0,0.4);
-  z-index: 2;
+  z-index: 3;
   transition: left .3s ease-in-out;
+  overflow-y: scroll;
 }
 
 .sidebar-active {
@@ -300,15 +314,18 @@ input {
   z-index: 4;
 }
 
+.sidebar::-webkit-scrollbar,
 .modal::-webkit-scrollbar {
   width: 10px;
 }
 
+.sidebar::-webkit-scrollbar-track,
 .modal::-webkit-scrollbar-track {
   background: #F1F1F1;
   border-radius: 5px;
 }
 
+.sidebar::-webkit-scrollbar-thumb,
 .modal::-webkit-scrollbar-thumb {
   background: #888;
   border-radius: 5px;
@@ -488,6 +505,7 @@ input {
   padding: 30px 10px;
   background-color: rgba(70, 70, 75, 0.8);
   border-radius: 5px;
+  user-select: none;
 }
 
 .new-sidebar {
@@ -522,6 +540,7 @@ input {
   height: 20px;
   background-color: rgba(70, 70, 75, 0.8);
   border-radius: 3px;
+  user-select: none;
 }
 
 .ol-zoom-in {
@@ -567,6 +586,7 @@ input {
   border-top: none;
   border-radius: 3px;
   background-color: rgba(255, 255, 255, 0.6);
+  user-select: none;
 }
 
 .ol-zoomslider {
@@ -615,7 +635,7 @@ input {
 
 .maps-wrapper {
   width: 100vw;
-  height: 100vh;
+  height: calc(100vh - 50px);
   position: relative;
   background-color: lightgrey;
 }
@@ -625,25 +645,26 @@ input {
   background-color: black;
   max-width: 100%;
   max-height: 100%;
-  z-index: 10000;
 }
 
 .splitter-h {
   position: absolute;
-  height: 10px;
+  height: 5px;
   width: 100%;
   left: 0;
-  background-color: aqua;
-  z-index: 10000;
+  background-color: #000;
+  /* background-color:var(--primary); */
+  cursor: ns-resize;
 }
 
 .splitter-v {
   position: absolute;
   height: 100%;
-  width: 10px;
+  width: 5px;
   top: 0;
-  background-color: aqua;
-  z-index: 10000;
+  background-color: #000;
+  /* background-color:var(--primary); */
+  cursor: ew-resize;
 }
 
 #map1 {

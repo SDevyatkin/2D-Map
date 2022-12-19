@@ -9,7 +9,7 @@ const DrawingPanel: FC = () => {
   const dispatch = useDispatch();
 
   const { Map, drawingModes, selectedDrawingMode } = useSelector((state: RootState) => ({
-    Map: state.Map.map,
+    Map: state.Map.maps[`map${state.Map.selectedMap}`],
     drawingModes: state.drawingSettings.options,
     selectedDrawingMode: state.drawingSettings.selected,
   }));

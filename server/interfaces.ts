@@ -58,6 +58,10 @@ export interface IRoutes {
   [key: number]: number[][];
 }
 
+export interface IRoutesByMap {
+  [key: string]: number[];
+}
+
 export interface IWidgets {
   [key: string]: {
     centeredFeature: number,

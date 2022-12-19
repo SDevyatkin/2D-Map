@@ -7,9 +7,10 @@ import ColorInput from './ColorInput';
 
 const RoutesPanel: FC = () => {
 
-  const { Map, pinObjects } = useSelector((state: RootState) => ({
-    Map: state.Map.map,
+  const { Map, pinObjects, selectedMap } = useSelector((state: RootState) => ({
+    Map: state.Map.maps[`map${state.Map.selectedMap}`],
     pinObjects: state.pinObjects.objects,
+    selectedMap: state.Map.selectedMap,
   }));
 
   const [selected, setSelected] = useState<number | 'None'>('None');
@@ -23,7 +24,7 @@ const RoutesPanel: FC = () => {
 
   const drawRoute = () => {
     if (selected !== 'None') {
-      pushRouteID(selected);
+      pushRouteID(selected, `map${selectedMap}`);
       Map.setRouteColor(selected, color);
     } 
     setSelected('None');

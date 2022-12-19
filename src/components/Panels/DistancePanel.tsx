@@ -12,7 +12,7 @@ const DistancePanel: FC = () => {
   const [color, setColor] = useState<string>('#000');
 
   const { Map, pinObjects } = useSelector((state: RootState) => ({
-    Map: state.Map.map,
+    Map: state.Map.maps[`map${state.Map.selectedMap}`],
     pinObjects: state.pinObjects.objects,
   }));
 

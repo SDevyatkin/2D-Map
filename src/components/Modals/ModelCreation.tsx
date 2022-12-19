@@ -4,6 +4,7 @@ import { saveNewPolygonIcon } from '../../api';
 import { DetectPolygonManager } from '../../DetectPolygonManager';
 import { ModalProps } from './modal.interface';
 import ModalOverlay from './ModalOverlay';
+import close from '../../assets/close.png';
 
 const ModelCreation: FC<ModalProps> = ({ handleClose }) => {
 
@@ -71,7 +72,9 @@ const ModelCreation: FC<ModalProps> = ({ handleClose }) => {
             <button className='primary-btn sidebar-btn' onClick={saveModel} disabled={!modelName}>Сохранить</button>
           </div>
         </div>
-        <button className='primary-btn close-btn' onClick={handleClose}>+</button>
+        <button className='primary-btn close-btn' onClick={handleClose}>
+          <img src={close} width={20} height={20} />
+        </button>
       </div>
     </ModalOverlay>
   );

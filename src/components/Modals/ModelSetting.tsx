@@ -6,7 +6,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { changeImage, changeMarkerSettings, changeModel, changeOpacity, changeSize, changeType } from '../../store/modelSettingsSlice';
 import TableRow from './TableRow';
-import KOK from '../../assets/images/Jet.png';
+import close from '../../assets/close.png';
+import { BASE_URL } from '../../api';
 
 const ModelSetting: FC<ModalProps> = ({ handleClose }) => {
 
@@ -57,8 +58,7 @@ const ModelSetting: FC<ModalProps> = ({ handleClose }) => {
           <span>Изображение:</span>
           <Select value={image} data={imageNames} noneField='' onChange={handleImageChange} />
         </div>
-        <img src={KOK} width={50} height={50} />
-        {/* <img src={`/public/images/${image}`} width={50} height={50} /> */}
+        <img src={`${BASE_URL}/public/images/${image}`} width={50} height={50} />
         <div className='settings-item'>
           <span>Размер:</span>
           <input type='number' value={size} step={0.05} onChange={handleSizeChange} />
@@ -72,7 +72,9 @@ const ModelSetting: FC<ModalProps> = ({ handleClose }) => {
           <Select value={model} data={polygonModelNames} noneField='Нет' onChange={handleModelChange} />
         </div>
         <button className='primary-btn sidebar-btn' onClick={saveModelSettings}>Сохранить модель</button>
-        <button className='primary-btn close-btn' onClick={handleClose}>+</button>
+        <button className='primary-btn close-btn' onClick={handleClose}>
+          <img src={close} width={20} height={20} />
+        </button>
       </div>
     </ModalOverlay>
   );

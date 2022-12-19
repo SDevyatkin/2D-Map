@@ -66,6 +66,7 @@ interface IMarkersObject extends IMarkerSettings {}
 
 class MapCanvas {
   private map: Map; 
+  private divID: string;
   private TileSource = new OSM();
   private ObjectsLayerSource = new VectorSource();
   private ObjectsLayer = new VectorLayer({ zIndex: 10 });
@@ -109,6 +110,7 @@ class MapCanvas {
 
   constructor(divID: string) {
     this.map = this.createMap(divID);
+    this.divID = divID;
 
     this.map.addLayer(this.ObjectsLayer);
     this.ObjectsLayer.setSource(this.ObjectsLayerSource);
@@ -199,11 +201,15 @@ class MapCanvas {
     });
 
     this.map.getView().on('change:rotation', (event) => {
-      console.log(event.target.values_.rotation);
       this.currentRotation = event.target.values_.rotation;
     });
 
-    const mapElement = document.getElementById('map') as HTMLElement;
+    const mapElement = document.getElementById(divID) as HTMLElement;
+
+    const mapID = document.createElement('div');
+    mapID.setAttribute('id', 'mapID');
+    mapID.innerHTML = this.divID.slice(3);
+    mapElement.appendChild(mapID);
 
     const mousePositionElement = document.createElement('div');
     mousePositionElement.setAttribute('id', 'mouse-position');
@@ -212,10 +218,6 @@ class MapCanvas {
     const scaleLineElement = document.createElement('div');
     scaleLineElement.setAttribute('id', 'scale-line');
     mapElement.appendChild(scaleLineElement);
-
-    // const compassElement = document.createElement('div');
-    // compassElement.setAttribute('id', 'compass');
-    // mapElement.appendChild(compassElement);
 
     this.map.addControl(new MousePosition({
       coordinateFormat: createStringXY(6),
@@ -290,27 +292,27 @@ class MapCanvas {
       });
 
       // drawing labels
-      for (let i = startY; i <= endY; i += unitSplit) {
-        text.setText(`${(i / 1000).toFixed(2)} км`);
-        lineStyle.setText(text);
+      // for (let i = startY; i <= endY; i += unitSplit) {
+      //   text.setText(`${(i / 1000).toFixed(2)} км`);
+      //   lineStyle.setText(text);
 
-        const extent = event.frameState?.extent as Extent;
+      //   const extent = event.frameState?.extent as Extent;
 
-        ctx.setStyle(lineStyle);
-        ctx.drawPoint(new Point([extent[0] + 10 * pxToUnit, i + pxToUnit]));
-      }
+      //   ctx.setStyle(lineStyle);
+      //   ctx.drawPoint(new Point([extent[0] + 10 * pxToUnit, i + pxToUnit]));
+      // }
 
-      text.setRotation(Math.PI / 2);
+      // text.setRotation(Math.PI / 2);
 
-      for (let i = startX; i <= endX; i += unitSplit) {
-        text.setText(`${(i / 1000).toFixed(2)} км`);
-        lineStyle.setText(text);
+      // for (let i = startX; i <= endX; i += unitSplit) {
+      //   text.setText(`${(i / 1000).toFixed(2)} км`);
+      //   lineStyle.setText(text);
 
-        const extent = event.frameState?.extent as Extent;
+      //   const extent = event.frameState?.extent as Extent;
 
-        ctx.setStyle(lineStyle);
-        ctx.drawPoint(new Point([i + pxToUnit, extent[3] - 10 * pxToUnit]))
-      }
+      //   ctx.setStyle(lineStyle);
+      //   ctx.drawPoint(new Point([i + pxToUnit, extent[3] - 10 * pxToUnit]))
+      // }
     });
 
     // const testFeatute = new Feature();
@@ -324,6 +326,14 @@ class MapCanvas {
     //   }),
     // }));
     // this.DrawLayerSource.addFeature(testFeatute)
+  }
+
+  public getDivID() {
+    return this.divID;
+  }
+
+  public resize() {
+    this.map.updateSize();
   }
 
   public setZoomLevel(level: number) {
@@ -508,8 +518,9 @@ class MapCanvas {
   }
 
   public drawRoutes(routes: IRoutes) {
+
     for (let key of Object.keys(routes)) {
-      const coordinates = routes[Number(key)].map(point => fromLonLat(point.reverse()));
+      const coordinates = routes[Number(key)].map(point => fromLonLat(point.slice().reverse()));
       
 
       if (!this.RoutesLayerSource.getFeatureById(key)) {
@@ -798,7 +809,7 @@ class MapCanvas {
       ];
 
       if (this.lockedView) {
-        console.log(this.centeredObject, this.lockedView)
+        // console.log(this.centeredObject, this.lockedView)
         this.map.getView().setCenter(fromLonLat([...coords]));
         this.map.getView().setZoom(this.zoomLevel);
       }
