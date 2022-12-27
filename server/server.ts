@@ -114,7 +114,7 @@ const imageNames: string[] = [];
 const imagesFolder = '../public/images';
 
 fs.readdir(imagesFolder, (_, files) => {
-    files.forEach((file) => imageNames.push(file));
+  files.forEach((file) => imageNames.push(file));
 });
 
 const saveRoutes = (data: IFeatures) => {
@@ -226,10 +226,21 @@ app.get('/Route/:id', (request: express.Request, response: express.Response) => 
     const routes = JSON.parse(fs.readFileSync('./JSON/Routes.json', 'utf-8'));
     const route = routes[request.params.id];
 
-    response.send({ route });
+    response.send({ [Number(request.params.id)]: route });
   } catch (error) {
     console.log(error.message);
     response.status(400);
+  }
+});
+
+app.post('/clearRoutes/:mapID', (request: express.Request, response: express.Response) => {
+  try {
+    const mapID = `map${request.params.mapID}`;
+
+    delete routesByMap[mapID];
+  } catch (error) {
+    console.log(error.message);
+    response.sendStatus(400);
   }
 });
 

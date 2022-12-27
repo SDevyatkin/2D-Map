@@ -6,6 +6,7 @@ import thunk from 'redux-thunk';
 import drawingSettingsSlice from './drawingSettingsSlice';
 import mapReducer from './mapSlice';
 import featuresDataSlice from './featuresDataSlice';
+import sidebarReducer from './sidebarSlice';
 
 export const reducer = combineReducers({
   Map: mapReducer,
@@ -14,6 +15,7 @@ export const reducer = combineReducers({
   modelSettings: modelSettingsReducer,
   drawingSettings: drawingSettingsSlice,
   featuresData: featuresDataSlice,
+  sidebar: sidebarReducer,
 });
 
 export const store = configureStore({

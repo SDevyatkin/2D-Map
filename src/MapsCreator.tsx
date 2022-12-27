@@ -1,4 +1,5 @@
 import { Map, View } from 'ol';
+import { buffer } from 'ol/extent';
 import TileLayer from 'ol/layer/Tile';
 import OSM from 'ol/source/OSM';
 import { FC, useEffect, useState } from 'react';
@@ -21,7 +22,7 @@ const MapsCreator: FC<Props> = ({ width, height }) => {
       view: new View({
         center: [0, 0],
         zoom: 3,
-        extent: new View().getProjection().getExtent(),
+        extent: buffer(new View().getProjection().getExtent(), 2),
         projection: 'EPSG:3857',
       }),
     });

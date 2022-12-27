@@ -12,28 +12,31 @@ interface IDivSize {
   height: number;
 }
 
+const clientWidth = Math.ceil(document.documentElement.clientWidth / 2);
+const clientHeight = Math.ceil((document.documentElement.clientHeight - 50) / 2);
+
 const defaultSizes: IDivSize[] = [
   {
     top: 0,
     left: 0,
-    width: 500,
-    height: 500
+    width: clientWidth,
+    height: clientHeight,
   },
   {
     top: 0,
-    left: 505,
+    left: clientWidth + 5,
     width: 100,
-    height: 500
+    height: clientHeight,
   },
   {
-    top: 505,
+    top: clientHeight + 5,
     left: 0,
-    width: 500,
-    height: 100
+    width: clientWidth,
+    height: 100,
   },
   {
-    top: 505,
-    left: 505,
+    top: clientHeight + 5,
+    left: clientWidth + 5,
     width: 100,
     height: 100
   }
@@ -46,7 +49,9 @@ const MapsWrapper: FC = () => {
   const [divSizes, setDivSizes] = useState<IDivSize[]>(defaultSizes);
 
   const mouseMoveHandler = (e: React.MouseEvent) => {
-    if (horisontalMove && e.clientY < 900) {
+    if (horisontalMove && e.clientY < (clientHeight * 2) - 380 && e.clientY > 380) {
+      // console.log(e.clientY);
+      // console.log(clientHeight);
       const dy = e.clientY - divSizes[0].height;
 
       const newSizes = [...divSizes];
@@ -59,7 +64,8 @@ const MapsWrapper: FC = () => {
       newSizes[2].height -= newSizes[0].height - divSizes[0].height;
       newSizes[3].height -= newSizes[1].height - divSizes[1].height;
       setDivSizes(newSizes);
-    } else if (verticalMove && e.clientX < 1200) {
+    } else if (verticalMove && e.clientX < (clientWidth * 2) - 650 && e.clientX > 650) {
+      // console.log(e.clientX);
       const dx = e.clientX - divSizes[0].width;
 
       const newSizes = [...divSizes];

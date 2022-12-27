@@ -63,6 +63,14 @@ export const getDistance = async (first: number, second: number) => {
   return distance;
 };
 
+export const getRoute = async (object: number) => {
+
+  const response = await fetch(`${BASE_URL}/Route/${object}`, { mode: 'cors' });
+  const route = await response.json();
+
+  return route;
+};
+
 export const getRoutes = async (ids: number[]) => {
   const response = await fetch(`${BASE_URL}/Routes`, {
     headers: {
@@ -73,6 +81,21 @@ export const getRoutes = async (ids: number[]) => {
   const routes = await response.json();
   
   return routes;
+};
+
+export const stopSendRoutes = async (mapID: number) => {
+
+  try {
+    await fetch(`${BASE_URL}/clearRoutes/${mapID}`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 export const pushRouteID = async (id: number, mapID: string) => {

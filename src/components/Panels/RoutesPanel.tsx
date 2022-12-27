@@ -1,41 +1,64 @@
 import { ChangeEvent, FC, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { pushRouteID } from '../../api';
+import { useDispatch, useSelector } from 'react-redux';
+import { getRoute, pushRouteID, stopSendRoutes } from '../../api';
+import { setRouteSettings } from '../../store/sidebarSlice';
 import { RootState } from '../../store/store';
 import Select from '../Select';
 import ColorInput from './ColorInput';
 
 const RoutesPanel: FC = () => {
 
-  const { Map, pinObjects, selectedMap } = useSelector((state: RootState) => ({
-    Map: state.Map.maps[`map${state.Map.selectedMap}`],
-    pinObjects: state.pinObjects.objects,
-    selectedMap: state.Map.selectedMap,
-  }));
+  const dispatch = useDispatch();
 
-  const [selected, setSelected] = useState<number | 'None'>('None');
-  const [color, setColor] = useState<string>('#000');
+  const { Map, MapID, pinObjects, object, color } = useSelector((state: RootState) => ({
+    Map: state.Map.maps[`map${state.Map.selectedMap}`],
+    MapID: Number(state.Map.selectedMap),
+    pinObjects: state.pinObjects.objects,
+    object: state.sidebar[Number(state.Map.selectedMap)].routeSettings.object,
+    color: state.sidebar[Number(state.Map.selectedMap)].routeSettings.color,
+  }));
 
   const onChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
 
-    setSelected(value === 'None' ? value : Number(value));
+    dispatch(setRouteSettings({
+      map: MapID,
+      settings: {
+        object: value === 'None' ? value : Number(value),
+        color,
+      },
+    }));
   };
 
-  const drawRoute = () => {
-    if (selected !== 'None') {
-      pushRouteID(selected, `map${selectedMap}`);
-      Map.setRouteColor(selected, color);
+  const drawRoute = async () => {
+    if (object !== 'None') {
+      const route = await getRoute(object);
+      Map.drawRoutes(route);
+      pushRouteID(object, `map${MapID}`);
+      Map.setRouteColor(object, color);
     } 
-    setSelected('None');
+    dispatch(setRouteSettings({
+      map: MapID,
+      settings: {
+        object: 'None',
+        color: '',
+      },
+    }));
   };
 
   const clearRoutesLayer = () => {
+    stopSendRoutes(MapID);
     Map.clearRoutesLayer();
   };
 
-  const handleColor = (color: string) => {
-    setColor(color);
+  const handleColor = (c: string) => {
+    dispatch(setRouteSettings({
+      map: MapID,
+      settings: {
+        object,
+        color: c,
+      },
+    }));
   };
 
   return (
@@ -43,11 +66,11 @@ const RoutesPanel: FC = () => {
       <h2>Пройденный путь</h2>
       <div className='selector'>
         <span>Объект</span>
-        <Select data={pinObjects} value={selected} noneField='-' onChange={onChange} />
+        <Select data={pinObjects} value={object} noneField='-' onChange={onChange} />
       </div>
-      <ColorInput sendColor={handleColor} />
+      <ColorInput colorInput={color} sendColor={handleColor} />
       <div className='buttons'>
-        <button className='primary-btn sidebar-btn' disabled={selected === 'None'} onClick={drawRoute}>построить</button>
+        <button className='primary-btn sidebar-btn' disabled={object === 'None'} onClick={drawRoute}>построить</button>
         <button className='primaty-btn sidebar-btn' onClick={clearRoutesLayer}>очистить</button>
       </div>
     </div>

@@ -1,22 +1,20 @@
 import { ChangeEvent, FC, useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
 
 interface Props {
+  colorInput: string;
   sendColor: (color: string) => void;
 }
 
-const ColorInput: FC<Props> = ({ sendColor }) => {
+const ColorInput: FC<Props> = ({ colorInput, sendColor }) => {
 
-  const [colorInput, setColorInput] = useState<string>('');
   const [colorExample, setColorExample] = useState<string>('#000');
-
-  useEffect(() => {
-    sendColor(colorExample);
-  }, [colorExample]);
 
   const handleColor = (event: ChangeEvent<HTMLInputElement>) => {
     const color = event.target.value.toUpperCase();
 
-    setColorInput(color);
+    sendColor(color)
 
     if (color.length && color[0] !== '#') {
       setColorExample('#000');

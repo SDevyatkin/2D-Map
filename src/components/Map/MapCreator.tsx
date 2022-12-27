@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useDispatch } from 'react-redux';
 import FeatureInfoModal from '../../FeatureInfoModal';
 import { appendMap } from '../../store/mapSlice';
+import { addNewMap } from '../../store/sidebarSlice';
 import MapCanvas from './MapCanvas';
 
 interface Props {
@@ -22,15 +23,23 @@ const MapCreator: FC<Props> = ({ divID }: Props) => {
     const div = document.getElementById(divID) as HTMLDivElement;
     setContainer(div);
 
-    const newMap = new MapCanvas(divID);
+    const newMap = new MapCanvas(divID, dispatch);
 
     setMap(newMap);
     dispatch(appendMap({
       id: divID,
       Map: newMap,
     }));
+    dispatch(addNewMap(Number(divID.slice(3))))
 
-    const observer = new ResizeObserver(() => newMap.resize());
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0].contentRect;
+      
+      // div.setAttribute('margin-top', `-${rect.height / 2}px`);
+      // div.setAttribute('margin-left', `-${rect.width / 2}px`);
+
+      newMap.resize();
+    });
 
     observer.observe(div);
   }, []);
@@ -39,6 +48,9 @@ const MapCreator: FC<Props> = ({ divID }: Props) => {
     <>
       {
         container && createPortal(<FeatureInfoModal divID={divID} />, container)
+      }
+      {
+        container && createPortal(<div id={`popup${divID.slice(3)}`} className='popup'></div>, container)
       }
     </>
   );

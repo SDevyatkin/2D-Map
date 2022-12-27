@@ -1,6 +1,6 @@
 import { Feature, Graticule, Map, View } from 'ol';
 import { Coordinate, createStringXY } from 'ol/coordinate';
-import { Extent, getCenter } from 'ol/extent';
+import { buffer, Extent, getCenter } from 'ol/extent';
 import { LineString, MultiLineString, Point, Polygon } from 'ol/geom';
 import { Type } from 'ol/geom/Geometry';
 import Draw from 'ol/interaction/Draw';
@@ -9,7 +9,7 @@ import Snap from 'ol/interaction/Snap';
 import TileLayer from 'ol/layer/Tile';
 import VectorLayer from 'ol/layer/Vector';
 import { fromLonLat, toLonLat } from 'ol/proj';
-import { OSM } from 'ol/source';
+import { OSM, XYZ } from 'ol/source';
 import VectorSource from 'ol/source/Vector';
 import CircleStyle from 'ol/style/Circle';
 import Fill from 'ol/style/Fill';
@@ -23,6 +23,9 @@ import { GreatCircle } from 'arc';
 import { FullScreen, MousePosition, Rotate, ScaleLine, Zoom, ZoomSlider, ZoomToExtent } from 'ol/control';
 import { IFeatures } from '../../wsTypes';
 import { getVectorContext } from 'ol/render';
+import { toSize } from 'ol/size';
+import { Dispatch } from '@reduxjs/toolkit';
+import { setFeatureInfoID } from '../../store/sidebarSlice';
 
 type mapObjectType = {
   id: number;
@@ -67,6 +70,7 @@ interface IMarkersObject extends IMarkerSettings {}
 class MapCanvas {
   private map: Map; 
   private divID: string;
+  private dispatch: Dispatch;
   private TileSource = new OSM();
   private ObjectsLayerSource = new VectorSource();
   private ObjectsLayer = new VectorLayer({ zIndex: 10 });
@@ -108,9 +112,10 @@ class MapCanvas {
     source: this.DrawLayerSource,
   });
 
-  constructor(divID: string) {
+  constructor(divID: string, dispatch: Dispatch) {
     this.map = this.createMap(divID);
     this.divID = divID;
+    this.dispatch = dispatch;
 
     this.map.addLayer(this.ObjectsLayer);
     this.ObjectsLayer.setSource(this.ObjectsLayerSource);
@@ -171,14 +176,19 @@ class MapCanvas {
       const feature = this.map.forEachFeatureAtPixel(event.pixel, (f) => f);
       
       if (feature) {
-        this.featureInfoID = feature.getId() as number;
+        const id = feature.getId() as number;
+        dispatch(setFeatureInfoID({
+          map: Number(divID.slice(3)), 
+          id,
+        }));
+        // this.featureInfoID = feature.getId() as number;
       }
     });
 
     this.map.on('pointermove', (event) => {
       const feature = this.map.forEachFeatureAtPixel(event.pixel, (f) => f);
 
-      const popup = document.getElementById('popup') as HTMLElement;
+      const popup = document.getElementById(`popup${this.divID.slice(3)}`) as HTMLElement;
 
       if (feature && feature.getId()?.toString().includes('distance')) {
         const id = feature.getId()?.toString().split('_') as string[];
@@ -192,7 +202,7 @@ class MapCanvas {
         popup.innerHTML = `${(distance / 1000).toFixed(3)} км`;
 
         popup.style.left = `${event.pixel[0] - 45}px`;
-        popup.style.top = `${event.pixel[1] + 10}px`;
+        popup.style.top = `${event.pixel[1] + 20}px`;
         popup.style.display = 'block';
 
       } else {
@@ -202,6 +212,7 @@ class MapCanvas {
 
     this.map.getView().on('change:rotation', (event) => {
       this.currentRotation = event.target.values_.rotation;
+      rotationValueElement.innerHTML = `${Math.abs(event.target.values_.rotation * 57.2958).toFixed(2)}&#176`;
     });
 
     const mapElement = document.getElementById(divID) as HTMLElement;
@@ -218,6 +229,11 @@ class MapCanvas {
     const scaleLineElement = document.createElement('div');
     scaleLineElement.setAttribute('id', 'scale-line');
     mapElement.appendChild(scaleLineElement);
+
+    const rotationValueElement = document.createElement('div');
+    rotationValueElement.setAttribute('id', 'rotation-value');
+    rotationValueElement.innerHTML = '0.00&#176';
+    mapElement.appendChild(rotationValueElement);
 
     this.map.addControl(new MousePosition({
       coordinateFormat: createStringXY(6),
@@ -314,18 +330,6 @@ class MapCanvas {
       //   ctx.drawPoint(new Point([i + pxToUnit, extent[3] - 10 * pxToUnit]))
       // }
     });
-
-    // const testFeatute = new Feature();
-    // testFeatute.setGeometry(
-    //   new LineString([[8781000,5662310],[8781000,5668860], [8808040,5668860]])
-    // )
-    // testFeatute.setStyle(new Style({
-    //   stroke: new Stroke({
-    //     width: 2,
-    //     color: 'red',
-    //   }),
-    // }));
-    // this.DrawLayerSource.addFeature(testFeatute)
   }
 
   public getDivID() {
@@ -412,6 +416,16 @@ class MapCanvas {
 
   public pushDistance(distance: [number, number]) {
     this.distances.push(distance);
+
+    this.DistanceLayerSource.clear();
+    for (let distance of this.distances) {
+      if (
+        this.FeaturesObject[distance[0]].featureParams.parentID !== 'death' && 
+        this.FeaturesObject[distance[1]].featureParams.parentID !== 'death'
+      ) {
+        this.drawDistance(distance);
+      }
+    }
   }
 
   public pushRoute(id: number) {
@@ -565,7 +579,11 @@ class MapCanvas {
 
     return new Map({
       layers: [
-        new TileLayer({ source: this.TileSource }),
+        new TileLayer({ 
+          // source: this.TileSource,
+          source: new XYZ({ url: 'http://127.0.0.1/tile/{z}/{x}/{y}.png' }),
+          preload: 6,
+        }),
       ],
       target: divID,
       view: new View({
@@ -575,6 +593,7 @@ class MapCanvas {
           projection: 'EPSG:3857',
       }),
       controls: [],
+      maxTilesLoading: 64,
     });
   }
 
@@ -596,21 +615,29 @@ class MapCanvas {
 
           const settings = this.MarkersObject[features[key].type];
 
-          const newFeatureStyle = new Style();
+          const newFeatureStyle = new Style({ zIndex: 2 });
 
           newFeatureStyle.setText(
             new Text({
-              font: '16px Calibri, sans-serif',
-              fill: new Fill({ color: '#f00' }),
+              textAlign: 'center',
+              justify: 'center',
+              font: 'lighter 22px Arial, sans-serif',
+              fill: new Fill({ color: '#000' }),
               stroke: new Stroke({
                 color: '#000',
-                width: 2,
+                width: 1,
               }),
               text: String(key),
+              backgroundFill: new Fill({ color: 'rgba(255, 255, 255, 0.8)' }),
+              backgroundStroke: new Stroke({
+                width: 1,
+                color: '#000',
+              }),
+              padding: [0, 2, 0, 4],
               offsetX: 30,
               offsetY: 30,
             })
-          )
+          );
 
           if (features[key].type in this.MarkersObject) {
 
@@ -801,6 +828,7 @@ class MapCanvas {
     this.PolygonsObject[id].yawOld = yaw;
   }
 
+
   private setViewCenter() {
     if (this.centeredObject !== 'None') {
       const coords = [
@@ -809,7 +837,6 @@ class MapCanvas {
       ];
 
       if (this.lockedView) {
-        // console.log(this.centeredObject, this.lockedView)
         this.map.getView().setCenter(fromLonLat([...coords]));
         this.map.getView().setZoom(this.zoomLevel);
       }
