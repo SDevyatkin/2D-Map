@@ -79,7 +79,7 @@ const DistancePanel: FC = () => {
   };
 
   return (
-    <div className='sidebar-panel'>
+    <div className='sidebar-panel' style={{ top: '230px' }}>
       <h2>Оценка расстояния</h2>
       <div className='selector'>
         <span>Объект 1</span>

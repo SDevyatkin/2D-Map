@@ -217,10 +217,10 @@ class MapCanvas {
 
     const mapElement = document.getElementById(divID) as HTMLElement;
 
-    const mapID = document.createElement('div');
-    mapID.setAttribute('id', 'mapID');
-    mapID.innerHTML = this.divID.slice(3);
-    mapElement.appendChild(mapID);
+    // const mapID = document.createElement('div');
+    // mapID.setAttribute('id', 'mapID');
+    // mapID.innerHTML = this.divID.slice(3);
+    // mapElement.appendChild(mapID);
 
     const mousePositionElement = document.createElement('div');
     mousePositionElement.setAttribute('id', 'mouse-position');
@@ -580,8 +580,8 @@ class MapCanvas {
     return new Map({
       layers: [
         new TileLayer({ 
-          // source: this.TileSource,
-          source: new XYZ({ url: 'http://127.0.0.1/tile/{z}/{x}/{y}.png' }),
+          source: this.TileSource,
+          // source: new XYZ({ url: 'http://127.0.0.1/tile/{z}/{x}/{y}.png' }),
           preload: 6,
         }),
       ],

@@ -75,7 +75,7 @@ const MapSettingsPanel: FC = () => {
   };
 
   return (
-    <div className='sidebar-panel'>
+    <div className='sidebar-panel' style={{ top: '170px' }}>
       <h2>Вид карты</h2>
       <div className='selector'>
         <span>Центрирование</span>

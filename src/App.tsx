@@ -22,7 +22,7 @@ const App = (): JSX.Element => {
   return (
     <>
       <Panel handleSidebar={handleSidebar} />
-      <MapsWrapper />
+      <MapsWrapper shift={sidebarOpened} />
       <Sidebar opened={sidebarOpened} handleSidebar={handleSidebar} />
     </>
   );

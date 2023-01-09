@@ -7,6 +7,7 @@ import drawingSettingsSlice from './drawingSettingsSlice';
 import mapReducer from './mapSlice';
 import featuresDataSlice from './featuresDataSlice';
 import sidebarReducer from './sidebarSlice';
+import widgetSettingsReducer from './widgetSettingsSlice';
 
 export const reducer = combineReducers({
   Map: mapReducer,
@@ -16,6 +17,7 @@ export const reducer = combineReducers({
   drawingSettings: drawingSettingsSlice,
   featuresData: featuresDataSlice,
   sidebar: sidebarReducer,
+  widgetSettings: widgetSettingsReducer,
 });
 
 export const store = configureStore({

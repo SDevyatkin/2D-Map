@@ -62,7 +62,7 @@ const RoutesPanel: FC = () => {
   };
 
   return (
-    <div className='sidebar-panel'>
+    <div className='sidebar-panel' style={{ top: '290px' }}>
       <h2>Пройденный путь</h2>
       <div className='selector'>
         <span>Объект</span>

@@ -5,6 +5,10 @@ import { RootState } from '../../store/store';
 import MapCreator from './MapCreator';
 import WebSocketConnection from './WebSocketConnection';
 
+interface Props {
+  shift: boolean;
+}
+
 interface IDivSize {
   top: number;
   left: number;
@@ -42,11 +46,50 @@ const defaultSizes: IDivSize[] = [
   }
 ];
 
-const MapsWrapper: FC = () => {
+const MapsWrapper: FC<Props> = ({ shift }) => {
+
+  const { selectedMap, widgetsLayout } = useSelector((state: RootState) => ({
+    selectedMap: state.Map.selectedMap,
+    widgetsLayout: state.widgetSettings.widgetsLayout,
+  }));
+
+  const [vSplitterTop, setVSplitterTop] = useState<number>(0);
+  const [vSplitterLeft, setVSplitterLeft] = useState<number>(0);
+  const [hSplitterTop, setHSplitterTop] = useState<number>(0);
+  const [hSplitterLeft, setHSplitterLeft] = useState<number>(0);
 
   const [horisontalMove, setHorisontalMove] = useState<boolean>(false);
   const [verticalMove, setVerticalMove] = useState<boolean>(false);
   const [divSizes, setDivSizes] = useState<IDivSize[]>(defaultSizes);
+
+  useEffect(() => {
+    switch (widgetsLayout) {
+      case '1':
+        setVSplitterTop(0);
+        setVSplitterLeft(0);
+        setHSplitterTop(0);
+        setHSplitterLeft(0);
+        break;
+      case '2v':
+        break;
+      case '2h':
+        break;
+      case '3t':
+        break;
+      case '3b':
+        break;
+      case '3l':
+        break;
+      case '3r':
+        break;
+      case '4':
+        setVSplitterTop(0);
+        setVSplitterLeft(shift ? divSizes[0].width + 60 : divSizes[0].width);
+        setHSplitterTop(divSizes[0].height);
+        setHSplitterLeft(0);
+        break;
+    }
+  }, [widgetsLayout]);
 
   const mouseMoveHandler = (e: React.MouseEvent) => {
     if (horisontalMove && e.clientY < (clientHeight * 2) - 380 && e.clientY > 380) {
@@ -66,7 +109,8 @@ const MapsWrapper: FC = () => {
       setDivSizes(newSizes);
     } else if (verticalMove && e.clientX < (clientWidth * 2) - 650 && e.clientX > 650) {
       // console.log(e.clientX);
-      const dx = e.clientX - divSizes[0].width;
+      // console.log(clientWidth * 2);
+      const dx = shift ? e.clientX - divSizes[0].width - 60 : e.clientX - divSizes[0].width;
 
       const newSizes = [...divSizes];
       newSizes[0].width += dx;
@@ -97,50 +141,83 @@ const MapsWrapper: FC = () => {
           className="map"
           style={{
             top: `${divSizes[0].top}px`,
-            left: `${divSizes[0].left}px`,
+            left: `${shift ? divSizes[0].left + 60 : divSizes[0].left}px`,
             width: `${divSizes[0].width}px`,
             height: `${divSizes[0].height}px`,
+            border: (selectedMap === '1' && shift) ? '4px solid #0197F6' : 'none',
           }}
           draggable={false}
-        ></div>
+        >
+          <div 
+            className='mapID' 
+            style={{ backgroundColor: (selectedMap === '1' && shift) ? 'rgba(1, 151, 246, 0.6)' : '' }}
+          >
+            1
+          </div>
+        </div>
         <div
           id="map2"
           className="map"
           style={{
             top: `${divSizes[1].top}px`,
-            left: `${divSizes[1].left}px`,
+            left: `${shift ? divSizes[1].left + 60 : divSizes[1].left}px`,
             right: 0,
             height: `${divSizes[1].height}px`,
+            border: (selectedMap === '2' && shift) ? '4px solid #0197F6' : 'none',
           }}
           draggable={false}
-        ></div>
+        >
+          <div 
+            className='mapID' 
+            style={{ backgroundColor: (selectedMap === '2' && shift) ? 'rgba(1, 151, 246, 0.6)' : '' }}
+          >
+            2
+          </div>
+        </div>
         <div
           id="map3"
           className="map"
           style={{
             top: `${divSizes[2].top}px`,
-            left: `${divSizes[2].left}px`,
+            left: `${shift ? divSizes[2].left + 60 : divSizes[2].left}px`,
             width: `${divSizes[2].width}px`,
             height: `auto`,
+            border: (selectedMap === '3' && shift) ? '4px solid #0197F6' : 'none',
           }}
           draggable={false}
-        ></div>
+        >
+          <div 
+            className='mapID' 
+            style={{ backgroundColor: (selectedMap === '3' && shift) ? 'rgba(1, 151, 246, 0.6)' : '' }}
+          >
+            3
+          </div>
+        </div>
         <div
           id="map4"
           className="map"
           style={{
             top: `${divSizes[3].top}px`,
-            left: `${divSizes[3].left}px`,
+            left: `${shift ? divSizes[3].left + 60 : divSizes[3].left}px`,
             width: `auto`,
             height: `auto`,
+            border: (selectedMap === '4' && shift) ? '4px solid #0197F6' : 'none',
           }}
           draggable={false}
-        ></div>
+        >
+          <div 
+            className='mapID' 
+            style={{ backgroundColor: (selectedMap === '4' && shift) ? 'rgba(1, 151, 246, 0.6)' : '' }}
+          >
+            4
+          </div>
+        </div>
         <div
           className="splitter-v"
           onMouseDown={(e) => setVerticalMove(true)}
           style={{
-            left: `${divSizes[0].width}px`,
+            top: 0,
+            left: `${shift ? divSizes[0].width + 60 : divSizes[0].width}px`,
             height: '100%',
           }}
         ></div>
@@ -152,6 +229,7 @@ const MapsWrapper: FC = () => {
           // onMouseMove={horisontalSpliterMoveHandler}
           style={{
             top: `${divSizes[0].height}px`,
+            left: 0,
             width: '100%',
           }}
         ></div>

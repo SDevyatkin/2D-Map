@@ -30,7 +30,7 @@ const DrawingPanel: FC = () => {
   const cleanDrawSource = () => Map.cleanDrawSource();
 
   return (
-    <div className='sidebar-panel'>
+    <div className='sidebar-panel' style={{ top: '110px' }}>
       <h2>Редактирования</h2>
       <div className='selector'>
         <span>Режим</span>
