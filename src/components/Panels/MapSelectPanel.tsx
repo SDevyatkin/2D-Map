@@ -12,9 +12,10 @@ const MapSelectPanel: FC<Props> = ({ onClose }) => {
 
   const dispatch = useDispatch();
 
-  const { maps, selectedMap } = useSelector((state: RootState) => ({
+  const { maps, selectedMap, widgetsLayout } = useSelector((state: RootState) => ({
     maps: Object.keys(state.Map.maps).map(id => id.slice(3)),
     selectedMap: state.Map.selectedMap,
+    widgetsLayout: state.widgetSettings.widgetsLayout,
   }));
 
   // const handleMap = (event: ChangeEvent<HTMLSelectElement>) => {
@@ -45,7 +46,7 @@ const MapSelectPanel: FC<Props> = ({ onClose }) => {
         <Select data={maps} value={selectedMap} noneField='' onChange={handleMap} />
       </div> */}
       {
-        maps.map(m => (
+        maps.filter(m => Number(m) <= Number(widgetsLayout[0])).map(m => (
           <button 
             key={m}
             className={`menu-btn${m === selectedMap ? ' menu-btn-active' : ''}`} 

@@ -55,7 +55,10 @@ export interface UserSettings {
 export type IImagesNames = string[];
 
 export interface IRoutes {
-  [key: string]: [number, number][]
+  [key: string]: {
+    route: [number, number][];
+    color: string;
+  }
 };
 
 // export interface IInitialSettings extends  {}

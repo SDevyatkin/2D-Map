@@ -1,5 +1,6 @@
 import { ChangeEvent, FC, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { saveDistance } from '../../api';
 import { setDistanceSettings } from '../../store/sidebarSlice';
 import { RootState } from '../../store/store';
 import Select from '../Select';
@@ -9,6 +10,7 @@ const DistancePanel: FC = () => {
 
   const dispatch = useDispatch();
 
+  const [colorInput, setColorInput] = useState<string>('');
   const [buttonDisabled, setButtonDisabled] = useState<boolean>(true);
 
   const { Map, MapID, pinObjects, object1, object2, color } = useSelector((state: RootState) => ({
@@ -19,6 +21,10 @@ const DistancePanel: FC = () => {
     object2: state.sidebar[Number(state.Map.selectedMap)].distanceSettings.object2,
     color: state.sidebar[Number(state.Map.selectedMap)].distanceSettings.color,
   }));
+
+  useEffect(() => {
+    setButtonDisabled(object1 === 'None' || object2 === 'None');
+  }, [object1, object2]);
 
   const handleFirstObject = (event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
@@ -32,10 +38,6 @@ const DistancePanel: FC = () => {
       },
     }));
   };
-
-  useEffect(() => {
-    setButtonDisabled(object1 === 'None' || object2 === 'None');
-  }, [object1, object2]);
 
   const handleSecondObject = (event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
@@ -51,6 +53,7 @@ const DistancePanel: FC = () => {
   };
 
   const drawDistance = () => {
+    saveDistance(`map${MapID}`, object1 as number, object2 as number, color);
     Map.setDistanceColor(object1 as number, object2 as number, color);
     Map.pushDistance([object1 as number, object2 as number]);
     dispatch(setDistanceSettings({
@@ -58,9 +61,11 @@ const DistancePanel: FC = () => {
       settings: {
         object1: 'None',
         object2: 'None',
-        color: '',
+        color: '#000',
       },
     }));
+    setColorInput('');
+    
   };
 
   const clearDistanceLayer = () => {
@@ -78,6 +83,10 @@ const DistancePanel: FC = () => {
     }));
   };
 
+  const handleColorInput = (c: string) => {
+    setColorInput(c);
+  };
+
   return (
     <div className='sidebar-panel' style={{ top: '230px' }}>
       <h2>Оценка расстояния</h2>
@@ -89,7 +98,7 @@ const DistancePanel: FC = () => {
         <span>Объект 2</span>
         <Select data={pinObjects.filter(pin => pin !== object1)} value={object2} noneField='-' onChange={handleSecondObject} />
       </div>
-      <ColorInput colorInput={color} sendColor={handleColor} />
+      <ColorInput colorInput={colorInput} sendColorInput={handleColorInput} sendColor={handleColor} />
       <div className='buttons'>
         <button className='primary-btn sidebar-btn' disabled={buttonDisabled} onClick={drawDistance}>построить</button>
         <button className='primaty-btn sidebar-btn' onClick={clearDistanceLayer}>очистить</button>

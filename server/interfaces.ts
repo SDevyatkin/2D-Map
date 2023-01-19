@@ -59,7 +59,17 @@ export interface IRoutes {
 }
 
 export interface IRoutesByMap {
-  [key: string]: number[];
+  [key: string]: {
+    id: number,
+    color: string,
+  }[];
+}
+
+export interface IDistancesByMap {
+  [key: string]: {
+    distance: string;
+    color: string;
+  }[];
 }
 
 export interface IWidgets {

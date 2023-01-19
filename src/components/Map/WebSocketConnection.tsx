@@ -23,6 +23,7 @@ const WebSocketConnection: FC = () => {
       const idsByAltitude = data.idsByAltitude;
       const routes = data.routes;
       const routesByMap = data.routesByMap;
+      const distancesByMap = data.distancesByMap;
   
       dispatch(changePinObjects(Object.keys(features).map(id => Number(id)).filter(id => features[id].parentID !== 'death')));
       dispatch(setFeaturesData(features));
@@ -33,11 +34,25 @@ const WebSocketConnection: FC = () => {
         const mapID = Map.getDivID();
         const filteredRoutes: IRoutes = {};
         if (routesByMap.hasOwnProperty(mapID)) {
-          routesByMap[mapID].map((id: any) => {
-            filteredRoutes[id] = routes[id];
+          // console.log(routesByMap[mapID]);
+          routesByMap[mapID].map((route: any) => {
+            filteredRoutes[route.id] = {
+              route: routes[route.id],
+              color: route.color,
+            };
           });
         }
+        // console.log(filteredRoutes);
         Map.drawRoutes(filteredRoutes);
+
+        // console.log(distancesByMap);
+        if (distancesByMap.hasOwnProperty(mapID)) {
+          distancesByMap[mapID].map((dist: any) => {
+            const [first, second] = dist.distance.split('_distance_').map((obj: any) => Number(obj));
+            Map.setDistanceColor(first, second, dist.color);
+            Map.pushDistance([first, second]);
+          });
+        }
       }
     };
 

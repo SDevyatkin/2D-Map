@@ -1,6 +1,6 @@
 import { Feature, Graticule, Map, View } from 'ol';
 import { Coordinate, createStringXY } from 'ol/coordinate';
-import { buffer, Extent, getCenter } from 'ol/extent';
+import { buffer, containsExtent, equals, Extent, getCenter, getRotatedViewport, getSize, getTopRight } from 'ol/extent';
 import { LineString, MultiLineString, Point, Polygon } from 'ol/geom';
 import { Type } from 'ol/geom/Geometry';
 import Draw from 'ol/interaction/Draw';
@@ -23,9 +23,11 @@ import { GreatCircle } from 'arc';
 import { FullScreen, MousePosition, Rotate, ScaleLine, Zoom, ZoomSlider, ZoomToExtent } from 'ol/control';
 import { IFeatures } from '../../wsTypes';
 import { getVectorContext } from 'ol/render';
-import { toSize } from 'ol/size';
+import { Size, toSize } from 'ol/size';
 import { Dispatch } from '@reduxjs/toolkit';
 import { setFeatureInfoID } from '../../store/sidebarSlice';
+import { MapExtent, setExtents } from '../../store/mapSlice';
+import { fromExtent } from 'ol/geom/Polygon';
 
 type mapObjectType = {
   id: number;
@@ -54,7 +56,10 @@ interface IPolygonsObject {
 }
 
 interface IRoutes {
-  [key: number]: number[][]
+  [key: number]: {
+    route: number[][],
+    color: string,
+  }
 }
 
 interface IRoutesColors {
@@ -75,15 +80,17 @@ class MapCanvas {
   private ObjectsLayerSource = new VectorSource();
   private ObjectsLayer = new VectorLayer({ zIndex: 10 });
   private PolygonsLayerSource = new VectorSource({});
-  private PolygonLayer = new VectorLayer({});
+  private PolygonLayer = new VectorLayer({ zIndex: 8 });
   private DrawLayerSource = new VectorSource({});
-  private DrawLayer = new VectorLayer({});
+  private DrawLayer = new VectorLayer({ zIndex: 7 });
   private DrawModifier = new Modify({ source: this.DrawLayerSource });
   private DistanceLayerSource = new VectorSource({});
-  private DistanceLayer = new VectorLayer({});
+  private DistanceLayer = new VectorLayer({ zIndex: 6 });
   private RoutesLayerSource = new VectorSource({});
-  private RoutesLayer = new VectorLayer({});
-  private GridLayer = new VectorLayer({ renderBuffer: Infinity });
+  private RoutesLayer = new VectorLayer({ zIndex: 5 });
+  private ExtentsLayer = new VectorLayer({ zIndex: 4 });
+  private ExtentsLayerSource = new VectorSource({});
+  private GridLayer = new VectorLayer({ renderBuffer: Infinity, zIndex: 2 });
   private GridLayerSource = new VectorSource({ features: [new Feature(new Point([0, 1]))] });
   // private DistanceModifier = new Modify({ source: this.DistanceLayerSource });
   private FeaturesObject: FeaturesObjectI = {};
@@ -94,6 +101,8 @@ class MapCanvas {
   private lockedView: boolean = false;
   private zoomLevel: number = 3;
   private currentCenter: [number, number] = [0, 0];
+  private currentExtent: Coordinate[];
+  private currentZoom: number = 3;
   private featureInfoID: number = -1;
   private featureInfo: mapObjectType | null = null;
   private userPoints: Coordinate[] = [];
@@ -116,6 +125,15 @@ class MapCanvas {
     this.map = this.createMap(divID);
     this.divID = divID;
     this.dispatch = dispatch;
+    const tempExtent = this.getCurrentExtent();
+    this.currentExtent = tempExtent.map(point => [point[0] * 0.99, point[1] * 0.99] as Coordinate);
+    this.dispatch(setExtents({
+      [this.divID]: {
+        extent: tempExtent,
+        rotation: this.currentRotation,
+        zoom: this.currentZoom
+      },
+    }));
 
     this.map.addLayer(this.ObjectsLayer);
     this.ObjectsLayer.setSource(this.ObjectsLayerSource);
@@ -170,6 +188,18 @@ class MapCanvas {
       }),
     }));
 
+    this.map.addLayer(this.ExtentsLayer);
+    this.ExtentsLayer.setSource(this.ExtentsLayerSource);
+    this.ExtentsLayer.setStyle(new Style({
+      stroke: new Stroke({
+        width: 3,
+        color: '#FFF',
+      }),
+      fill: new Fill({
+        color: 'rgba(255, 255, 255, 0.4)'
+      }),
+    }));
+
     this.getMarkerSettings();
 
     this.map.on('click', (event) => {
@@ -205,9 +235,36 @@ class MapCanvas {
         popup.style.top = `${event.pixel[1] + 20}px`;
         popup.style.display = 'block';
 
+      } else if (feature && feature.getId()?.toString().includes('extent')) {
+        const mapID = feature.getId()?.toString().split('_')[0].slice(3);
+        
+        popup.innerHTML = `Вид карты ${mapID}`;
+
+        popup.style.left = `${event.pixel[0] - 45}px`;
+        popup.style.top = `${event.pixel[1] + 20}px`;
+        popup.style.display = 'block';
       } else {
         popup.style.display = 'none';
       }
+    });
+
+    this.map.getView().on('propertychange', () => {
+      // this.currentExtent = this.map.getView().calculateExtent(this.map.getSize());
+      this.currentZoom = this.map.getView().getZoom() as number;
+      const tempExtent = this.getCurrentExtent();
+      this.currentExtent = tempExtent.map(point => [point[0] * 0.99, point[1] * 0.99] as Coordinate);
+
+      // console.log(this.map.getView().calculateExtent(this.map.getSize()));
+      // console.log(this.map.getView().calculateExtentInternal(this.map.getSize()));
+      // console.log(this.map.getView().rotatedExtentForGeometry(this.map));
+
+      dispatch(setExtents({
+        [this.divID]: {
+          extent: tempExtent,
+          rotation: this.currentRotation,
+          zoom: this.currentZoom,
+        },
+      }));
     });
 
     this.map.getView().on('change:rotation', (event) => {
@@ -215,25 +272,51 @@ class MapCanvas {
       rotationValueElement.innerHTML = `${Math.abs(event.target.values_.rotation * 57.2958).toFixed(2)}&#176`;
     });
 
+    const sizeObserver = new ResizeObserver(() => {
+
+      this.currentZoom = this.map.getView().getZoom() as number;
+      const tempExtent = this.getCurrentExtent();
+      this.currentExtent = tempExtent.map(point => [point[0] * 0.99, point[1] * 0.99] as Coordinate);
+
+      // console.log(tempExtent);
+
+      dispatch(setExtents({
+        [this.divID]: {
+          extent: tempExtent,
+          rotation: this.currentRotation,
+          zoom: this.currentZoom,
+        },
+      }));
+    });
+
     const mapElement = document.getElementById(divID) as HTMLElement;
+    const mapViewport = mapElement.querySelector('.ol-viewport') as HTMLElement;
+
+    sizeObserver.observe(mapViewport);
+    // console.log(mapViewport);
 
     // const mapID = document.createElement('div');
     // mapID.setAttribute('id', 'mapID');
     // mapID.innerHTML = this.divID.slice(3);
     // mapElement.appendChild(mapID);
 
+    const mapIdElement = document.createElement('div');
+    mapIdElement.classList.add('mapID');
+    mapIdElement.innerHTML = this.divID.slice(3);
+    mapViewport.appendChild(mapIdElement);
+
     const mousePositionElement = document.createElement('div');
     mousePositionElement.setAttribute('id', 'mouse-position');
-    mapElement.appendChild(mousePositionElement);
+    mapViewport.appendChild(mousePositionElement);
 
     const scaleLineElement = document.createElement('div');
     scaleLineElement.setAttribute('id', 'scale-line');
-    mapElement.appendChild(scaleLineElement);
+    mapViewport.appendChild(scaleLineElement);
 
     const rotationValueElement = document.createElement('div');
     rotationValueElement.setAttribute('id', 'rotation-value');
     rotationValueElement.innerHTML = '0.00&#176';
-    mapElement.appendChild(rotationValueElement);
+    mapViewport.appendChild(rotationValueElement);
 
     this.map.addControl(new MousePosition({
       coordinateFormat: createStringXY(6),
@@ -267,6 +350,8 @@ class MapCanvas {
       let pxSplit = unitSplit / pxToUnit;
 
       let [xmin, ymin, xmax, ymax] = event.frameState?.extent as Extent;
+      // event.frameState?.nextExtent
+      // this.currentExtent = event.frameState?.extent as Extent;
 
       while (pxSplit * 2 < 100) {
         unitSplit *= 2;
@@ -329,6 +414,8 @@ class MapCanvas {
       //   ctx.setStyle(lineStyle);
       //   ctx.drawPoint(new Point([i + pxToUnit, extent[3] - 10 * pxToUnit]))
       // }
+      // console.log(this.currentExtent);
+      // console.log(xmin, ymin, xmax, ymax);
     });
   }
 
@@ -354,6 +441,23 @@ class MapCanvas {
     this.map.removeInteraction(this.snap);
 
     this.addInteractions(mode);
+  }
+
+  public getCurrentExtent() {
+    const extent = getRotatedViewport(
+      this.map.getView().getCenterInternal() as Coordinate,
+      this.map.getView().getResolution() as number,
+      this.map.getView().getRotation(),
+      [this.map.getViewport().offsetWidth, this.map.getViewport().offsetHeight],
+    );
+
+    const extentByCoords: Coordinate[] = [];
+    
+    for (let i = 0; i < extent.length; i += 2) {
+      extentByCoords.push([extent[i], extent[i + 1]] as Coordinate);
+    }
+
+    return extentByCoords;
   }
 
   public getPinObjects() {
@@ -534,8 +638,9 @@ class MapCanvas {
   public drawRoutes(routes: IRoutes) {
 
     for (let key of Object.keys(routes)) {
-      const coordinates = routes[Number(key)].map(point => fromLonLat(point.slice().reverse()));
-      
+      console.log(routes[Number(key)]);
+      this.setRouteColor(Number(key), routes[Number(key)].color);
+      const coordinates = routes[Number(key)].route.map(point => fromLonLat(point.slice().reverse()));
 
       if (!this.RoutesLayerSource.getFeatureById(key)) {
         const geometry = new LineString(coordinates);
@@ -543,6 +648,7 @@ class MapCanvas {
 
         feature.setGeometry(geometry);
         feature.setId(key);
+        // console.log(this.routesColors);
         feature.setStyle(new Style({
           stroke: new Stroke({
             width: 2,
@@ -556,6 +662,111 @@ class MapCanvas {
           .appendCoordinate(coordinates[coordinates.length - 1]);
       }
     } 
+  }
+
+  private extentContains(extent: Coordinate[]) {
+    // let containsPoints = 0;
+    // for (let coord of extent) {
+    //   let acc: number[] = []; 
+    //   for (let i = 0; i < this.currentExtent.length - 1; i++) {
+    //     const Ax = this.currentExtent[i][0];
+    //     const Ay = this.currentExtent[i][1];
+
+    //     const Bx = this.currentExtent[i + 1][0];
+    //     const By = this.currentExtent[i + 1][1];
+
+    //     const Px = coord[0];
+    //     const Py = coord[1];
+
+    //     acc.push((Bx - Ax) * (Py - Ay) - (By - Ay) * (Px - Ax));
+    //     // const dx = this.currentExtent[i + 1][0] - this.currentExtent[i][0];
+    //     // const dy = this.currentExtent[i + 1][1] - this.currentExtent[i][1];
+    //     // const d = ((this.currentExtent[i][1] - coord[1]) * dx + (coord[0] - this.currentExtent[i][0]) * dy) / (dy ** 2 + dx ** 2);
+    //     // acc.push(d <= 0);
+    //   }
+
+    //   if (!acc.every(n => n < 0) && !acc.every(n => n > 0)) {
+    //     // containsPoints++;
+    //     return false;
+    //   } else {
+    //     containsPoints++;
+        
+    //     if (containsPoints === 2) {
+    //       return true;
+    //     }
+    //   }
+
+    //   // if (containsPoints == 1) {
+    //   //   return true;
+    //   // }
+    //   // console.log(this.divID, acc);
+    //   // acc.every(item => item) && containsPoints++;
+    // }
+
+    // // console.log(this.divID, containsPoints);
+    // return true;
+    // console.log(this.currentExtent, extent);
+    if (
+      (this.currentExtent[0][0] < extent[0][0] || this.currentExtent[0][1] < extent[0][1]) &&
+      (this.currentExtent[1][0] < extent[1][0] || this.currentExtent[1][1] > extent[1][1]) &&
+      (this.currentExtent[2][0] > extent[2][0] || this.currentExtent[2][1] > extent[2][1]) &&
+      (this.currentExtent[3][0] > extent[3][0] || this.currentExtent[3][1] < extent[3][1])
+    ) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  public drawExtents(extents: MapExtent) {
+    for (let id in extents) {
+      if (id !== this.divID) {
+        const extent = extents[id].extent;
+        // console.log(
+        //   `${id}: ${extent}
+        //   ${this.divID}: ${this.currentExtent}
+        //   ${containsExtent(extent, this.currentExtent.map(coord => coord * 0.98))}`
+        // );
+        let contains: boolean = false;
+        // console.log(extents[id].zoom - this.currentZoom);
+        if (extents[id].zoom - this.currentZoom > 0.25) {
+          contains = this.extentContains(extent);
+        }
+        // const extremePoints = this.getExtremePoints(extent, getSize(extent), extents[id].rotation);
+        // console.log(extremePoints);
+        // const contains = containsExtent(extent, this.currentExtent.map(coord => coord * 0.98));
+        // const equal = equals(extent, this.currentExtent.map(coord => coord * 0.98));
+        const featureID = `${id}_extent`;
+
+        if (!this.ExtentsLayerSource.getFeatureById(featureID) && contains) {
+          // console.log(extremePoints[3][1] === extent[1]);
+          // const geometry = fromExtent(extent);
+          const geometry = new Polygon([extent]);
+          // console.log(geometry);
+          // const rotation = extents[id].rotation < 45 ? extents[id].rotation : extents[id].rotation * 2; 
+          // geometry.rotate(rotation, getCenter(extent));
+          const feature = new Feature({});
+
+          feature.setGeometry(geometry);
+          feature.setId(featureID);
+
+          this.ExtentsLayerSource.addFeature(feature);
+        } else if (contains) {
+          const feature = this.ExtentsLayerSource.getFeatureById(featureID) as Feature;
+          // const geometry = fromExtent(extent);
+          const geometry = new Polygon([extent]);
+          // console.log(geometry);
+          // const rotation = Math.abs(extents[id].rotation) < Math.PI / 4 ? extents[id].rotation : extents[id].rotation * 2; 
+          // geometry.rotate(rotation, getCenter(extent));
+          feature.setGeometry(geometry);
+
+          // console.log(getTopRight(extent));
+        } else {
+          const feature = this.ExtentsLayerSource.getFeatureById(featureID) as Feature;
+          this.ExtentsLayerSource.removeFeature(feature);
+        }
+      }
+    }
   }
 
   private addInteractions(mode: string) {
@@ -704,6 +915,50 @@ class MapCanvas {
 
     const geometry = feature.getGeometry() as Point; 
     geometry.setCoordinates(fromLonLat([lon, lat]));
+  }
+
+  private getExtremePoints(extent: Extent, size: Size, rotation: number) {
+    const width = Math.sqrt((extent[0] - extent[3]) ** 2 + (extent[1] - extent[1]) ** 2);
+    const height = Math.sqrt((extent[0] - extent[0]) ** 2 + (extent[1] - extent[3]) ** 2);
+    // let [width, height] = size;
+    const phi = Math.tan(rotation);
+
+    const x2 = (phi * height - width) / (-1 + phi ** 2);
+    const x1 = width - x2;
+
+    // const y2 = Math.tan(rotation) * x1;
+    const y2 = rotation ? x1 * (Math.sin(Math.PI / 2 - rotation) / Math.sin(rotation)) : height;
+    const y1 = height - y2;
+    // console.log(x1, x2, width, height, phi);
+    // console.log(Math.sin(rotation));
+    let extremePoints: Coordinate[];
+
+    if (phi >= 0) {
+      // console.log(x1, x2, y1, y2, width, height, phi);
+      extremePoints = [
+        [extent[0] + x1, extent[1]] as Coordinate,
+        [extent[0], extent[1] + y2] as Coordinate,
+        [extent[2] - x1, extent[3]] as Coordinate,
+        [extent[2], extent[1] + y1] as Coordinate,
+      ];
+      console.log(extent[0], x1, extent[0] + x1);
+      // extremePoints = [
+      //   [extent[0], extent[1] + y1] as Coordinate, // x+
+      //   [extent[0] + x1, extent[3]] as Coordinate, // y+
+      //   [extent[2], extent[3] - y1] as Coordinate, // x+
+      //   [extent[2] - x1, extent[1]] as Coordinate, // y+
+      // ];
+    } else {
+      // console.log(x1, x2, y1, y2);
+      extremePoints = [
+        [extent[0], extent[1] - y1] as Coordinate,
+        [extent[0] - x1, extent[3]] as Coordinate,
+        [extent[2], extent[3] + y1] as Coordinate,
+        [extent[2] + x1, extent[1]] as Coordinate,
+      ];
+    }
+
+    return extremePoints;
   }
 
   private rotateObjectLayerFeature(id: number, yaw: number) {

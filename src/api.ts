@@ -83,6 +83,22 @@ export const getRoutes = async (ids: number[]) => {
   return routes;
 };
 
+export const saveDistance = async (mapID: string, first: number, second: number, color: string) => {
+
+  try {
+    await fetch(`${BASE_URL}/Distance`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ mapID, first, second, color }),
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
 export const stopSendRoutes = async (mapID: number) => {
 
   try {
@@ -98,14 +114,16 @@ export const stopSendRoutes = async (mapID: number) => {
   }
 };
 
-export const pushRouteID = async (id: number, mapID: string) => {
+export const pushRouteID = async (id: number, color: string, mapID: string) => {
+  console.log(color);
   try {
-    await fetch(`${BASE_URL}/Route/${id}/${mapID}`, {
+    await fetch(`${BASE_URL}/Route`, {
       method: 'POST',
       mode: 'cors',
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ id, color, mapID }),
     });
   } catch (error) {
     console.log(error);

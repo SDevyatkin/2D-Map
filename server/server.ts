@@ -7,7 +7,7 @@ import path from 'path';
 import cors from 'cors';
 import ws from 'ws';
 import { calculateDistance, distanceRoute } from './utils';
-import { IFeatures, IRoutes, IRoutesByMap } from './interfaces';
+import { IFeatures, IRoutes, IRoutesByMap, IDistancesByMap } from './interfaces';
 
 interface IClients {
   [key: number]: WebSocket;
@@ -20,7 +20,7 @@ let socketMapDataFreq: number = 17;
 let clientID: number = 1;
 let routesID: number[] = [];
 const routesByMap: IRoutesByMap = {};
-
+const distancesByMap: IDistancesByMap = {};
 
 // TCP
 
@@ -244,19 +244,59 @@ app.post('/clearRoutes/:mapID', (request: express.Request, response: express.Res
   }
 });
 
-app.post('/Route/:id/:mapID', (request: express.Request, response: express.Response) => {
+app.post('/Route', (request: express.Request, response: express.Response) => {
   try {
-    const id = Number(request.params.id)
-    const mapID = request.params.mapID;
+    const id = Number(request.body.id)
+    const mapID = request.body.mapID;
+    const color = request.body.color;
 
     if (routesByMap.hasOwnProperty(mapID)) {
-      routesByMap[mapID].push(Number(request.params.id));
+      routesByMap[mapID].push({
+        id, 
+        color,
+      });
     } else {
-      routesByMap[mapID] = [Number(request.params.id)];
+      routesByMap[mapID] = [{
+        id, 
+        color,
+      }];
     }
 
     routesID.push(id);
     response.send(`Пройденный путь объекта ${id} построен.`);
+  } catch (error) {
+    console.log(error.message);
+    response.sendStatus(400);
+  }
+});
+
+app.post('/Distance', (request: express.Request, response: express.Response) => {
+  try {
+    const mapID = request.body.mapID;
+    let first = Number(request.body.first);
+    let second = Number(request.body.second);
+    const color = request.body.color;
+
+    if (first < second) {
+      const temp = first;
+      first = second;
+      second = temp;
+    }
+
+    const distance = `${first}_distance_${second}`;
+
+    if (distancesByMap.hasOwnProperty(mapID) && !distancesByMap[mapID].some((d) => d.distance === distance)) {
+      distancesByMap[mapID].push({
+        distance,
+        color,
+      });
+    } else {
+      distancesByMap[mapID] = [{
+        distance,
+        color,
+      }];
+    }
+
   } catch (error) {
     console.log(error.message);
     response.sendStatus(400);
@@ -310,9 +350,9 @@ const sendData = (features: IFeatures, routes: IRoutes, wsClient: WebSocket | nu
     sub.push([key, features[key].altitude])
   }
 
-  const idsByAltitude = sub.sort((a, b) => a[1] - b[1]).map(item => item[0]);
+  const idsByAltitude = sub.sort((a, b) => b[1] - a[1]).map(item => item[0]);
 
-  const data = { features, idsByAltitude, routes, routesByMap };
+  const data = { features, idsByAltitude, routes, routesByMap, distancesByMap };
 
   wsClient.send(JSON.stringify(data));
 }

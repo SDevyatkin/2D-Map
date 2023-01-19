@@ -61,6 +61,10 @@ input {
   user-select: none;
 }
 
+.active-mapID {
+  background-color: rgba(1, 151, 246, 0.8);
+}
+
 #mouse-position {
   position: absolute;
   width: 250px;
@@ -365,7 +369,7 @@ input {
   align-items: center;
   gap: 10px;
   top: 60px;
-  right: 208px;
+  right: 193px;
   padding: 20px 10px !important;
   height: 30px;
   border-radius: 5px;
@@ -713,10 +717,14 @@ input {
   height: calc(100vh - 50px);
   position: relative;
   background-color: lightgrey;
+  display: grid;
+  gap: 5px;
+  /* grid-template-rows: repeat(2, calc(50% - 2.5px)); */
+  /* grid-template-columns: repeat(2, calc(50% - 2.5px)); */
 }
 
 .map {
-  position: absolute;
+  /* position: relative; */
   background-color: black;
   max-width: 100%;
   max-height: 100%;
@@ -730,6 +738,7 @@ input {
   background-color: #000;
   /* background-color:var(--primary); */
   cursor: ns-resize;
+  z-index: 100;
 }
 
 .splitter-v {
@@ -740,6 +749,7 @@ input {
   background-color: #000;
   /* background-color:var(--primary); */
   cursor: ew-resize;
+  z-index: 100;
 }
 
 #map1 {

@@ -5,18 +5,21 @@ import Panel from './components/Panel';
 import Sidebar from './components/Sidebar';
 import FeatureInfoModal from './FeatureInfoModal';
 import { setFeaturesData } from './store/featuresDataSlice';
+import { toggleSidebarOpened } from './store/mapSlice';
 import { changePinObjects } from './store/pinObjectsSlice';
 import { RootState } from './store/store';
 import { useData } from './useData';
 
 const App = (): JSX.Element => {
 
-  const [sidebarOpened, setSidebarOpened] = useState<boolean>(false);
+  // const [sidebarOpened, setSidebarOpened] = useState<boolean>(false);
+  const dispatch = useDispatch();
+  const sidebarOpened = useSelector((state: RootState) => state.Map.sidebarOpened);
 
   useData();
   
   const handleSidebar = (event: MouseEvent) => {
-    setSidebarOpened(state => !state);
+    dispatch(toggleSidebarOpened())
   };
 
   return (

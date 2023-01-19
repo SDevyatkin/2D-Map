@@ -10,6 +10,7 @@ import win4 from '../../assets/win4.svg';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { setLayout, WidgetsLayout } from '../../store/widgetSettingsSlice';
+import { updateExtens } from '../../store/mapSlice';
 
 interface Props {
   handleClose: () => void;
@@ -23,6 +24,7 @@ const WidgetSettings: FC<Props> = ({ handleClose }) => {
 
   const handleWidgetsLayout = (event: MouseEvent<HTMLButtonElement>) => {
     dispatch(setLayout(event.currentTarget.id.slice(1) as WidgetsLayout));
+    dispatch(updateExtens());
     handleClose();
   };
 

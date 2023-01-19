@@ -62,7 +62,7 @@ const FeatureInfoModal: FC<Props> = ({ divID }) => {
           </div>
       }
     </>,
-    document.getElementById(divID) as HTMLDivElement
+    document.getElementById(divID)?.querySelector('.ol-viewport') as HTMLDivElement
   );
 };
 

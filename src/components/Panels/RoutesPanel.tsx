@@ -10,6 +10,7 @@ const RoutesPanel: FC = () => {
 
   const dispatch = useDispatch();
 
+  const [colorInput, setColorInput] = useState<string>('');
   const { Map, MapID, pinObjects, object, color } = useSelector((state: RootState) => ({
     Map: state.Map.maps[`map${state.Map.selectedMap}`],
     MapID: Number(state.Map.selectedMap),
@@ -33,9 +34,14 @@ const RoutesPanel: FC = () => {
   const drawRoute = async () => {
     if (object !== 'None') {
       const route = await getRoute(object);
-      Map.drawRoutes(route);
-      pushRouteID(object, `map${MapID}`);
       Map.setRouteColor(object, color);
+      Map.drawRoutes({
+        [Number(object)]: {
+          route: route[Number(object)],
+          color,
+        }
+      });
+      pushRouteID(object, color, `map${MapID}`);
     } 
     dispatch(setRouteSettings({
       map: MapID,
@@ -61,6 +67,10 @@ const RoutesPanel: FC = () => {
     }));
   };
 
+  const handleColorInput = (c: string) => {
+    setColorInput(c);
+  };
+
   return (
     <div className='sidebar-panel' style={{ top: '290px' }}>
       <h2>Пройденный путь</h2>
@@ -68,7 +78,7 @@ const RoutesPanel: FC = () => {
         <span>Объект</span>
         <Select data={pinObjects} value={object} noneField='-' onChange={onChange} />
       </div>
-      <ColorInput colorInput={color} sendColor={handleColor} />
+      <ColorInput colorInput={colorInput} sendColorInput={handleColorInput} sendColor={handleColor} />
       <div className='buttons'>
         <button className='primary-btn sidebar-btn' disabled={object === 'None'} onClick={drawRoute}>построить</button>
         <button className='primaty-btn sidebar-btn' onClick={clearRoutesLayer}>очистить</button>

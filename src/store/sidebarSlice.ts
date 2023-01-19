@@ -42,11 +42,11 @@ export const initialState: SidebarState = {
     distanceSettings: {
       object1: 'None',
       object2: 'None',
-      color: '',
+      color: '#000',
     },
     routeSettings: {
       object: 'None',
-      color: '',
+      color: '#000',
     },
     featureInfoID: -1,
   },
@@ -67,11 +67,11 @@ export const sidebarSlice = createSlice({
         distanceSettings: {
           object1: 'None',
           object2: 'None',
-          color: '',
+          color: '#000',
         },
         routeSettings: {
           object: 'None',
-          color: '',
+          color: '#000',
         },
         featureInfoID: -1,
       };

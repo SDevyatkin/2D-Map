@@ -4,17 +4,18 @@ import { RootState } from '../../store/store';
 
 interface Props {
   colorInput: string;
+  sendColorInput?: (color: string) => void;
   sendColor: (color: string) => void;
 }
 
-const ColorInput: FC<Props> = ({ colorInput, sendColor }) => {
+const ColorInput: FC<Props> = ({ colorInput, sendColorInput, sendColor }) => {
 
   const [colorExample, setColorExample] = useState<string>('#000');
 
   const handleColor = (event: ChangeEvent<HTMLInputElement>) => {
     const color = event.target.value.toUpperCase();
 
-    sendColor(color)
+    sendColorInput && sendColorInput(color);
 
     if (color.length && color[0] !== '#') {
       setColorExample('#000');
@@ -35,6 +36,7 @@ const ColorInput: FC<Props> = ({ colorInput, sendColor }) => {
       }
     }
 
+    sendColor(color);
     setColorExample(color);
   };
 
