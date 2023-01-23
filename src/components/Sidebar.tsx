@@ -13,6 +13,7 @@ import view from '../assets/sidebar/view.png';
 import settings from '../assets/sidebar/settings.png';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
+import ModalOverlay from './Modals/ModalOverlay';
 
 interface SidebarProps {
   opened: boolean;
@@ -85,6 +86,7 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
     setViewSettingsPanel(false);
     setDistancePanel(false);
     setRoutePanel(false);
+    console.log('hi');
     setSettingsModal(state => !state);
   };
 
@@ -116,11 +118,11 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
             <img src={routes} draggable={false} />
           </button>
         </div>
-        <div className='sidebar-menu'>
+        {/* <div className='sidebar-menu'>
           <button className={`menu-btn${settingsModal ? ' menu-btn-active' : ''}`} onClick={handleSettingsModal}>
             <img src={settings} draggable={false} /> 
           </button>
-        </div>
+        </div> */}
       </div>
   
       { (mapSelectPanel && opened) && <MapSelectPanel onClose={closeMapSelectPanel} /> }
@@ -128,6 +130,7 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
       { (viewSettingsPanel && opened) && <MapSettingsPanel /> }
       { (distancePanel && opened) && <DistancePanel /> }
       { (routePanel && opened) && <RoutesPanel /> }
+      { (settingsModal && opened) && <></> }
     </>
     , document.getElementById('root') as HTMLDivElement
   );

@@ -49,9 +49,9 @@ const MapCreator: FC<Props> = ({ divID }: Props) => {
       {
         container && createPortal(<FeatureInfoModal divID={divID} />, container)
       }
-      {
+      {/* {
         container && createPortal(<div id={`popup${divID.slice(3)}`} className='popup'></div>, container)
-      }
+      } */}
     </>
   );
 };

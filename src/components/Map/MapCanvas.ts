@@ -28,6 +28,8 @@ import { Dispatch } from '@reduxjs/toolkit';
 import { setFeatureInfoID } from '../../store/sidebarSlice';
 import { MapExtent, setExtents } from '../../store/mapSlice';
 import { fromExtent } from 'ol/geom/Polygon';
+import { DragBox, Extent as ExtentInteraction } from 'ol/interaction';
+import { shiftKeyOnly } from 'ol/events/condition';
 
 type mapObjectType = {
   id: number;
@@ -202,23 +204,52 @@ class MapCanvas {
 
     this.getMarkerSettings();
 
-    this.map.on('click', (event) => {
-      const feature = this.map.forEachFeatureAtPixel(event.pixel, (f) => f);
+    // const extentInteraction = new ExtentInteraction({ 
+    //   condition: shiftKeyOnly,
+    //   boxStyle: new Style({
+    //     stroke: new Stroke({
+    //       width: 3,
+    //       color: 'rgb(139, 0, 255)',
+    //     }),
+    //     fill: new Fill({
+    //       color: 'rgba(139, 0, 255, 0.4)'
+    //     }),
+    //   }),
+    // });
+
+    // extentInteraction.on('extentchanged', (event) => {
+    //   event.preventDefault();
+    //   // console.log(event);
+    // });
+
+    // this.map.addInteraction(extentInteraction);
+
+    // // this.map.on('pointerdrag', () => console.log('hi'));
+
+    // this.map.on('click', (event) => {
+    //   const feature = this.map.forEachFeatureAtPixel(event.pixel, (f) => f);
       
-      if (feature) {
-        const id = feature.getId() as number;
-        dispatch(setFeatureInfoID({
-          map: Number(divID.slice(3)), 
-          id,
-        }));
-        // this.featureInfoID = feature.getId() as number;
-      }
-    });
+    //   console.log(feature);
+    //   if (feature) {
+    //     const id = feature.getId() as number;
+    //     dispatch(setFeatureInfoID({
+    //       map: Number(divID.slice(3)), 
+    //       id,
+    //     }));
+    //     // this.featureInfoID = feature.getId() as number;
+    //   }
+    // });
+
+    const mapElement = document.getElementById(divID) as HTMLElement;
+    const mapViewport = mapElement.querySelector('.ol-viewport') as HTMLElement;
+
+    const popup = document.createElement('div');
+    popup.setAttribute('id', `popup${this.divID.slice(3)}`);
+    popup.classList.add('popup');
+    mapViewport.appendChild(popup);
 
     this.map.on('pointermove', (event) => {
       const feature = this.map.forEachFeatureAtPixel(event.pixel, (f) => f);
-
-      const popup = document.getElementById(`popup${this.divID.slice(3)}`) as HTMLElement;
 
       if (feature && feature.getId()?.toString().includes('distance')) {
         const id = feature.getId()?.toString().split('_') as string[];
@@ -288,9 +319,6 @@ class MapCanvas {
         },
       }));
     });
-
-    const mapElement = document.getElementById(divID) as HTMLElement;
-    const mapViewport = mapElement.querySelector('.ol-viewport') as HTMLElement;
 
     sizeObserver.observe(mapViewport);
     // console.log(mapViewport);

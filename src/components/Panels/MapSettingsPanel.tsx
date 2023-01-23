@@ -89,9 +89,9 @@ const MapSettingsPanel: FC = () => {
         <label htmlFor='lock-view'>Блокировать вид</label>
         <input id='lock-view' type='checkbox' checked={lockedView} onChange={handleLockedView} />
       </div>
-      <div className='buttons'>
+      {/* <div className='buttons'>
         <button className='primary-btn sidebar-btn'>сохранить</button>
-      </div>
+      </div> */}
     </div>
   );
 };
