@@ -1,4 +1,4 @@
-import { Feature, Graticule, Map, View } from 'ol';
+import { Feature, Graticule, Map, MapBrowserEvent, View } from 'ol';
 import { Coordinate, createStringXY } from 'ol/coordinate';
 import { buffer, containsExtent, equals, Extent, getCenter, getRotatedViewport, getSize, getTopRight } from 'ol/extent';
 import { LineString, MultiLineString, Point, Polygon } from 'ol/geom';
@@ -28,8 +28,11 @@ import { Dispatch } from '@reduxjs/toolkit';
 import { setFeatureInfoID } from '../../store/sidebarSlice';
 import { MapExtent, setExtents } from '../../store/mapSlice';
 import { fromExtent } from 'ol/geom/Polygon';
-import { DragBox, Extent as ExtentInteraction } from 'ol/interaction';
+import { DragAndDrop, DragBox, DragPan, DragRotate, Extent as ExtentInteraction, Pointer } from 'ol/interaction';
 import { shiftKeyOnly } from 'ol/events/condition';
+import { v4 } from 'uuid';
+import { DragBoxEvent } from 'ol/interaction/DragBox';
+import PointerInteraction from 'ol/interaction/Pointer';
 
 type mapObjectType = {
   id: number;
@@ -92,6 +95,8 @@ class MapCanvas {
   private RoutesLayer = new VectorLayer({ zIndex: 5 });
   private ExtentsLayer = new VectorLayer({ zIndex: 4 });
   private ExtentsLayerSource = new VectorSource({});
+  private UserExtentsLayer = new VectorLayer({ zIndex: 4 });
+  private UserExtentsLayerSource = new VectorSource({});
   private GridLayer = new VectorLayer({ renderBuffer: Infinity, zIndex: 2 });
   private GridLayerSource = new VectorSource({ features: [new Feature(new Point([0, 1]))] });
   // private DistanceModifier = new Modify({ source: this.DistanceLayerSource });
@@ -104,6 +109,9 @@ class MapCanvas {
   private zoomLevel: number = 3;
   private currentCenter: [number, number] = [0, 0];
   private currentExtent: Coordinate[];
+  private currentUserExtentStart: Coordinate = [0, 0];
+  private currentUserExtentEnd: Coordinate = [0, 0];
+  private currentUserExtentID: string = '';
   private currentZoom: number = 3;
   private featureInfoID: number = -1;
   private featureInfo: mapObjectType | null = null;
@@ -202,6 +210,18 @@ class MapCanvas {
       }),
     }));
 
+    this.map.addLayer(this.UserExtentsLayer);
+    this.UserExtentsLayer.setSource(this.UserExtentsLayerSource);
+    this.UserExtentsLayer.setStyle(new Style({
+      stroke: new Stroke({
+        width: 3,
+        color: 'rgb(78, 0, 255)',
+      }),
+      fill: new Fill({
+        color: 'rgba(78, 0, 255, 0.4)'
+      }),
+    }));
+
     this.getMarkerSettings();
 
     // const extentInteraction = new ExtentInteraction({ 
@@ -224,21 +244,64 @@ class MapCanvas {
 
     // this.map.addInteraction(extentInteraction);
 
-    // // this.map.on('pointerdrag', () => console.log('hi'));
+    // const dragBox = new DragBox();
 
-    // this.map.on('click', (event) => {
-    //   const feature = this.map.forEachFeatureAtPixel(event.pixel, (f) => f);
-      
-    //   console.log(feature);
-    //   if (feature) {
-    //     const id = feature.getId() as number;
-    //     dispatch(setFeatureInfoID({
-    //       map: Number(divID.slice(3)), 
-    //       id,
-    //     }));
-    //     // this.featureInfoID = feature.getId() as number;
+    // dragBox.on('boxstart', (event) => {
+
+    //   if (event.mapBrowserEvent.originalEvent.shiftKey || !event.mapBrowserEvent.originalEvent.altKey) {
+    //     this.currentUserExtentID = '';
+    //     return;
     //   }
+
+    //   this.currentUserExtentStart = event.coordinate;
+    //   this.currentUserExtentEnd = event.coordinate;
+
+    //   const geometry = this.getUserExtentGeometry();
+
+    //   const feature = new Feature();
+
+    //   const id = `UserExtent_${v4()}`;
+    //   this.currentUserExtentID = id;
+
+    //   feature.setId(id);
+    //   feature.setGeometry(geometry);
+
+    //   this.UserExtentsLayerSource.addFeature(feature);
     // });
+
+    // dragBox.on('boxdrag', this.updateUserExtentFeature.bind(this));
+
+    // dragBox.on('boxend', this.updateUserExtentFeature.bind(this));
+
+    // this.map.addInteraction(dragBox);
+
+    // const dragPan = new DragPan();
+
+    // this.map.addInteraction(dragPan);
+
+    // const dragRotate = new DragRotate();
+
+    // this.map.addInteraction(dragRotate);
+    // this.map.on('pointerdrag', (event) => {
+    //   console.log(event.originalEvent);
+    // });
+
+    this.map.on('click', (event) => {
+      const feature = this.map.forEachFeatureAtPixel(event.pixel, (f) => f);
+      
+      if (!feature) return;
+
+      if (feature.getId()?.toString().startsWith('UserExtent')) {
+        console.log('hello');
+      } else {
+        const id = feature.getId() as number;
+        dispatch(setFeatureInfoID({
+          map: Number(divID.slice(3)), 
+          id,
+        }));
+      }
+        // this.featureInfoID = feature.getId() as number;
+    });
 
     const mapElement = document.getElementById(divID) as HTMLElement;
     const mapViewport = mapElement.querySelector('.ol-viewport') as HTMLElement;
@@ -469,6 +532,32 @@ class MapCanvas {
     this.map.removeInteraction(this.snap);
 
     this.addInteractions(mode);
+  }
+
+  private getUserExtentGeometry() {
+    const extent = [
+      Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]),
+      Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1]),
+      Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]),
+      Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1]),
+    ] as Extent;
+
+    const geometry = fromExtent(extent);
+    geometry.rotate(this.currentRotation, getCenter(extent));
+
+    return geometry;
+  }
+
+  private updateUserExtentFeature(event: DragBoxEvent) {
+    const feature = this.UserExtentsLayerSource.getFeatureById(this.currentUserExtentID);
+
+    if (!feature) return;
+
+    this.currentUserExtentEnd = event.coordinate;
+
+    const geometry = this.getUserExtentGeometry();
+
+    feature?.setGeometry(geometry);
   }
 
   public getCurrentExtent() {

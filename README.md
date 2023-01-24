@@ -1,25 +1,23 @@
-# Getting Started with Create React App
+# v 1.0.0
+
+### Установка node.js приложения
 
 ##### $ git clone 
-##### $ cd udpWebMapModule
-##### $ npm install 
+##### $ cd server
+##### $ npm install
 ##### В файле config/default.js настроить url:
-##### $ node main.js 
+##### $ npm run server
+##### $ cd ..
+##### $ npm install
+##### $ npm start 
 
 ===============================================================================
-
 
 ### Cсылки на ресурсы
 
 ##### Map osm.pbf
 
 https://drive.google.com/file/d/14IaN-Pq1xaQMpU5NAvfN1ueJm45n0HgU/view?usp=sharing
-
-##### Docker images
-
-https://drive.google.com/file/d/1gvSNqwFo6odYBEgWW20q4Dq7kbDZBLxp/view?usp=sharing
-
-https://drive.google.com/file/d/1FwpMOc5LAPcet9bCYbB4XZ3dE947tU_9/view?usp=sharing
 
 ===============================================================================
 
@@ -34,8 +32,16 @@ $ sudo docker run --name tile_server -p 80:80 -v openstreetmap-data:/var/lib/pos
 ===============================================================================
 
 ### ПРИ ЗАПУСКЕ СИСТЕМЫ 
-1. $ sudo docker start tile_server
-2. $ cd udpWebMapModule
-3. $ node main.js
+$ sudo docker start tile_server
 
 ===============================================================================
+
+Протокол взаимодействия 
+
+    UDP PORT:  50050
+
+    TCP PORT: 50051
+
+#### ADDRESS:
+
+#### http://localhost:3000/
