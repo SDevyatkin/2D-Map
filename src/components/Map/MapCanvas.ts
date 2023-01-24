@@ -908,8 +908,8 @@ class MapCanvas {
     return new Map({
       layers: [
         new TileLayer({ 
-          source: this.TileSource,
-          // source: new XYZ({ url: 'http://127.0.0.1/tile/{z}/{x}/{y}.png' }),
+          // source: this.TileSource,
+          source: new XYZ({ url: 'http://127.0.0.1/tile/{z}/{x}/{y}.png' }),
           preload: 6,
         }),
       ],
