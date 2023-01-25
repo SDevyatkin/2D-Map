@@ -88,6 +88,21 @@ input {
   border-radius: 5px;
 }
 
+.popup-flex {
+  padding: 0;
+  height: auto;
+}
+
+.popup-btn {
+  padding: 0;
+  width: 100%;
+  line-height: 1.2;
+}
+
+.popup-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1)
+}
+
 .custom-mouse-position {
   color: #000;
   font-size: 18px;

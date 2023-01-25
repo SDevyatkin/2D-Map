@@ -75,6 +75,10 @@ interface IDistancesColors {
   [key: string]: string;
 }
 
+interface IUserExtents {
+  [key: string]: Coordinate[];
+}
+
 interface IMarkersObject extends IMarkerSettings {}
 
 class MapCanvas {
@@ -112,6 +116,7 @@ class MapCanvas {
   private currentUserExtentStart: Coordinate = [0, 0];
   private currentUserExtentEnd: Coordinate = [0, 0];
   private currentUserExtentID: string = '';
+  private userExtents: IUserExtents = {};
   private currentZoom: number = 3;
   private featureInfoID: number = -1;
   private featureInfo: mapObjectType | null = null;
@@ -244,55 +249,109 @@ class MapCanvas {
 
     // this.map.addInteraction(extentInteraction);
 
-    // const dragBox = new DragBox();
+    const dragBox = new DragBox();
 
-    // dragBox.on('boxstart', (event) => {
+    dragBox.on('boxstart', (event) => {
 
-    //   if (event.mapBrowserEvent.originalEvent.shiftKey || !event.mapBrowserEvent.originalEvent.altKey) {
-    //     this.currentUserExtentID = '';
-    //     return;
-    //   }
+      if (event.mapBrowserEvent.originalEvent.altKey || !event.mapBrowserEvent.originalEvent.shiftKey) {
+        this.currentUserExtentID = '';
+        return;
+      }
 
-    //   this.currentUserExtentStart = event.coordinate;
-    //   this.currentUserExtentEnd = event.coordinate;
+      this.currentUserExtentStart = event.coordinate;
+      this.currentUserExtentEnd = event.coordinate;
 
-    //   const geometry = this.getUserExtentGeometry();
+      const id = `UserExtent_${v4()}`;
+      this.currentUserExtentID = id;
 
-    //   const feature = new Feature();
+      const geometry = this.getUserExtentGeometry();
 
-    //   const id = `UserExtent_${v4()}`;
-    //   this.currentUserExtentID = id;
+      const feature = new Feature();
 
-    //   feature.setId(id);
-    //   feature.setGeometry(geometry);
+      feature.setId(id);
+      feature.setGeometry(geometry);
 
-    //   this.UserExtentsLayerSource.addFeature(feature);
-    // });
+      this.UserExtentsLayerSource.addFeature(feature);
+      this.userExtents[id] = [
+        event.coordinate,
+        event.coordinate,
+        event.coordinate,
+        event.coordinate,
+      ];
 
-    // dragBox.on('boxdrag', this.updateUserExtentFeature.bind(this));
+      // console.log(this.userExtents);
+    });
 
-    // dragBox.on('boxend', this.updateUserExtentFeature.bind(this));
+    dragBox.on('boxdrag', this.updateUserExtentFeature.bind(this));
 
-    // this.map.addInteraction(dragBox);
+    dragBox.on('boxend', this.updateUserExtentFeature.bind(this));
 
-    // const dragPan = new DragPan();
+    this.map.addInteraction(dragBox);
 
-    // this.map.addInteraction(dragPan);
+    const dragPan = new DragPan();
 
-    // const dragRotate = new DragRotate();
+    this.map.addInteraction(dragPan);
 
-    // this.map.addInteraction(dragRotate);
+    const dragRotate = new DragRotate();
+
+    this.map.addInteraction(dragRotate);
     // this.map.on('pointerdrag', (event) => {
     //   console.log(event.originalEvent);
     // });
 
+    const mapElement = document.getElementById(divID) as HTMLElement;
+    const mapViewport = mapElement.querySelector('.ol-viewport') as HTMLElement;
+
+    const popupOnClick = document.createElement('div');
+    popupOnClick.setAttribute('id', `popupOnClick${this.divID.slice(3)}`);
+    popupOnClick.classList.add('popup', 'popup-flex');
+    mapViewport.appendChild(popupOnClick);
+
+    const popupFitExtentButton = document.createElement('button');
+    popupFitExtentButton.innerHTML = 'Перейти';
+    popupFitExtentButton.classList.add('popup-btn');
+    popupOnClick.appendChild(popupFitExtentButton);
+
+    const popupDeleteButton = document.createElement('button');
+    popupDeleteButton.innerHTML = 'Удалить';
+    popupDeleteButton.classList.add('popup-btn');
+    popupOnClick.appendChild(popupDeleteButton);
+
+    popupFitExtentButton.addEventListener('click', (event) => {
+      popupOnClick.style.display = 'none';
+
+      const id = (event.currentTarget as HTMLButtonElement).dataset.extentId as string;
+
+      this.map.getView().fit(new Polygon([this.userExtents[id]]));
+    });
+
+    popupDeleteButton.addEventListener('click', (event) => {
+      popupOnClick.style.display = 'none';
+
+      const id = (event.currentTarget as HTMLButtonElement).dataset.extentId as string;
+
+      delete this.userExtents[id];
+      this.UserExtentsLayerSource.removeFeature(
+        this.UserExtentsLayerSource.getFeatureById(id) as Feature
+      );
+    });
+
     this.map.on('click', (event) => {
       const feature = this.map.forEachFeatureAtPixel(event.pixel, (f) => f);
+
+      popupOnClick.style.display = 'none';
       
       if (!feature) return;
 
-      if (feature.getId()?.toString().startsWith('UserExtent')) {
-        console.log('hello');
+      const featureID = feature.getId()?.toString() as string;
+
+      if (featureID.startsWith('UserExtent')) {
+        popupFitExtentButton.dataset.extentId = featureID;
+        popupDeleteButton.dataset.extentId = featureID;
+
+        popupOnClick.style.left = `${event.pixel[0] - 45}px`;
+        popupOnClick.style.top = `${event.pixel[1] + 20}px`;
+        popupOnClick.style.display = 'block';
       } else {
         const id = feature.getId() as number;
         dispatch(setFeatureInfoID({
@@ -303,13 +362,10 @@ class MapCanvas {
         // this.featureInfoID = feature.getId() as number;
     });
 
-    const mapElement = document.getElementById(divID) as HTMLElement;
-    const mapViewport = mapElement.querySelector('.ol-viewport') as HTMLElement;
-
-    const popup = document.createElement('div');
-    popup.setAttribute('id', `popup${this.divID.slice(3)}`);
-    popup.classList.add('popup');
-    mapViewport.appendChild(popup);
+    const popupOnHover = document.createElement('div');
+    popupOnHover.setAttribute('id', `popupOnHover${this.divID.slice(3)}`);
+    popupOnHover.classList.add('popup');
+    mapViewport.appendChild(popupOnHover);
 
     this.map.on('pointermove', (event) => {
       const feature = this.map.forEachFeatureAtPixel(event.pixel, (f) => f);
@@ -323,22 +379,22 @@ class MapCanvas {
 
         const distance = this.calculateDistance(coords1, coords2);
 
-        popup.innerHTML = `${(distance / 1000).toFixed(3)} км`;
+        popupOnHover.innerHTML = `${(distance / 1000).toFixed(3)} км`;
 
-        popup.style.left = `${event.pixel[0] - 45}px`;
-        popup.style.top = `${event.pixel[1] + 20}px`;
-        popup.style.display = 'block';
+        popupOnHover.style.left = `${event.pixel[0] - 45}px`;
+        popupOnHover.style.top = `${event.pixel[1] + 20}px`;
+        popupOnHover.style.display = 'block';
 
       } else if (feature && feature.getId()?.toString().includes('extent')) {
         const mapID = feature.getId()?.toString().split('_')[0].slice(3);
         
-        popup.innerHTML = `Вид карты ${mapID}`;
+        popupOnHover.innerHTML = `Вид карты ${mapID}`;
 
-        popup.style.left = `${event.pixel[0] - 45}px`;
-        popup.style.top = `${event.pixel[1] + 20}px`;
-        popup.style.display = 'block';
+        popupOnHover.style.left = `${event.pixel[0] - 45}px`;
+        popupOnHover.style.top = `${event.pixel[1] + 20}px`;
+        popupOnHover.style.display = 'block';
       } else {
-        popup.style.display = 'none';
+        popupOnHover.style.display = 'none';
       }
     });
 
@@ -351,6 +407,7 @@ class MapCanvas {
       // console.log(this.map.getView().calculateExtent(this.map.getSize()));
       // console.log(this.map.getView().calculateExtentInternal(this.map.getSize()));
       // console.log(this.map.getView().rotatedExtentForGeometry(this.map));
+      this.redrawUserExtents();
 
       dispatch(setExtents({
         [this.divID]: {
@@ -534,30 +591,73 @@ class MapCanvas {
     this.addInteractions(mode);
   }
 
-  private getUserExtentGeometry() {
-    const extent = [
-      Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]),
-      Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1]),
-      Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]),
-      Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1]),
-    ] as Extent;
+  private getUserExtentGeometry(id?: string, userExtent?: Coordinate[]) {
+    // const extent = [
+    //   Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]),
+    //   Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1]),
+    //   Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]),
+    //   Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1]),
+    // ] as Extent;
 
-    const geometry = fromExtent(extent);
-    geometry.rotate(this.currentRotation, getCenter(extent));
+    const extent = userExtent ? userExtent : [
+      [Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])] as Coordinate,
+      [Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])] as Coordinate,
+      [Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])] as Coordinate,
+      [Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])] as Coordinate,
+    ];
+
+    this.userExtents[id ? id : this.currentUserExtentID] = extent;
+
+    const geometry = new Polygon([extent]);
+    // const geometry = fromExtent(extent);
+    // geometry.rotate(this.currentRotation, getCenter(extent));
 
     return geometry;
   }
 
   private updateUserExtentFeature(event: DragBoxEvent) {
+
+    if (event.mapBrowserEvent.originalEvent.altKey || !event.mapBrowserEvent.originalEvent.shiftKey) {
+      this.currentUserExtentID = '';
+      return;
+    }
+
     const feature = this.UserExtentsLayerSource.getFeatureById(this.currentUserExtentID);
 
     if (!feature) return;
 
     this.currentUserExtentEnd = event.coordinate;
 
+    this.userExtents[this.currentUserExtentID] = [
+      [Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])],
+      [Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])],
+      [Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])],
+      [Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])],
+    ];
+
     const geometry = this.getUserExtentGeometry();
 
     feature?.setGeometry(geometry);
+
+    if (event.type === 'boxend') {
+      this.currentUserExtentID = '';
+    }
+  }
+
+  private redrawUserExtents() {
+    this.UserExtentsLayerSource.clear();
+    for (let [id, extent] of Object.entries(this.userExtents)) {
+
+      if (this.extentContains(extent)) {
+        const geometry = this.getUserExtentGeometry(id, extent);
+
+        const feature = new Feature({});
+        feature.setGeometry(geometry);
+        feature.setId(id);
+
+        this.UserExtentsLayerSource.addFeature(feature);
+      } 
+    }
   }
 
   public getCurrentExtent() {
@@ -908,8 +1008,8 @@ class MapCanvas {
     return new Map({
       layers: [
         new TileLayer({ 
-          // source: this.TileSource,
-          source: new XYZ({ url: 'http://127.0.0.1/tile/{z}/{x}/{y}.png' }),
+          source: this.TileSource,
+          // source: new XYZ({ url: 'http://127.0.0.1/tile/{z}/{x}/{y}.png' }),
           preload: 6,
         }),
       ],
