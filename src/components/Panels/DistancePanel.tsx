@@ -88,7 +88,7 @@ const DistancePanel: FC = () => {
   };
 
   return (
-    <div className='sidebar-panel' style={{ top: '230px' }}>
+    <div id='distance-panel' className='sidebar-panel' style={{ top: '230px' }}>
       <h2>Оценка расстояния</h2>
       <div className='selector'>
         <span>Объект 1</span>
@@ -98,7 +98,7 @@ const DistancePanel: FC = () => {
         <span>Объект 2</span>
         <Select data={pinObjects.filter(pin => pin !== object1)} value={object2} noneField='-' onChange={handleSecondObject} />
       </div>
-      <ColorInput colorInput={colorInput} sendColorInput={handleColorInput} sendColor={handleColor} />
+      <ColorInput parentId='distance-panel' colorInput={colorInput} sendColorInput={handleColorInput} sendColor={handleColor} />
       <div className='buttons'>
         <button className='primary-btn sidebar-btn' disabled={buttonDisabled} onClick={drawDistance}>построить</button>
         <button className='primaty-btn sidebar-btn' onClick={clearDistanceLayer}>очистить</button>

@@ -12,6 +12,15 @@ export type MapExtent = {
   };
 };
 
+export type UserExtentColorPicker = {
+  mapId: string;
+  featureId: string;
+};
+
+export type UserExtentColorPickers = {
+  [key: string]: string,
+}
+
 export interface MapState {
   maps: {
     [key: string]: MapCanvas
@@ -19,6 +28,7 @@ export interface MapState {
   selectedMap: string;
   sidebarOpened: boolean;
   mapsExtents: MapExtent;
+  userExtentColorPickers: UserExtentColorPickers; 
 }
 
 const initialState: MapState = {
@@ -26,6 +36,7 @@ const initialState: MapState = {
   selectedMap: '1',
   sidebarOpened: false,
   mapsExtents: {},
+  userExtentColorPickers: {},
 };
 
 export const MapSlice = createSlice({
@@ -34,6 +45,7 @@ export const MapSlice = createSlice({
   reducers: {
     appendMap: (state, action: PayloadAction<{id: string, Map: MapCanvas}>) => {
       state.maps[action.payload.id] = action.payload.Map;
+      state.userExtentColorPickers[action.payload.id] = '';
     },
     selectMap: (state, action: PayloadAction<string>) => {
       state.selectedMap = action.payload;
@@ -83,9 +95,16 @@ export const MapSlice = createSlice({
         state.maps[mapID].drawExtents(newState);
       }
     },
+
+    setUserExtentColorPicker: (state, action: PayloadAction<UserExtentColorPicker>) => {
+      state.userExtentColorPickers[action.payload.mapId] = action.payload.featureId;
+    },
   },
 });
 
-export const { appendMap, selectMap, toggleSidebarOpened, updateExtens, setExtents } = MapSlice.actions;
+export const { 
+  appendMap, selectMap, toggleSidebarOpened,
+  updateExtens, setExtents, setUserExtentColorPicker 
+} = MapSlice.actions;
 
 export default MapSlice.reducer;

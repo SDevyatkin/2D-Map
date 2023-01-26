@@ -1,16 +1,22 @@
 import { ChangeEvent, FC, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
+import { HexColorPicker, HexColorInput } from 'react-colorful';
+import { relative } from 'path';
 
 interface Props {
+  parentId: string;
   colorInput: string;
   sendColorInput?: (color: string) => void;
   sendColor: (color: string) => void;
 }
 
-const ColorInput: FC<Props> = ({ colorInput, sendColorInput, sendColor }) => {
+const ColorInput: FC<Props> = ({ parentId, colorInput, sendColorInput, sendColor }) => {
 
+  const [pickerOpened, setPickerOpened] = useState<boolean>(false);
   const [colorExample, setColorExample] = useState<string>('#000');
+
+  const topPosition = document.getElementById(parentId)?.style.top;
 
   const handleColor = (event: ChangeEvent<HTMLInputElement>) => {
     const color = event.target.value.toUpperCase();
@@ -40,12 +46,35 @@ const ColorInput: FC<Props> = ({ colorInput, sendColorInput, sendColor }) => {
     setColorExample(color);
   };
 
+  const handlePicker = (color: string) => {
+    const upColor = color.toUpperCase();
+
+    sendColor(upColor);
+    sendColorInput && sendColorInput(upColor);
+    setColorExample(upColor);
+  };
+
+  const handlePickerOpened = () => setPickerOpened(state => !state);
+
   return (
-    <div className='color-input'>
-      <span>Цвет (RGB)</span>
-      <input type='text' value={colorInput} onChange={handleColor} maxLength={7} placeholder={'#цвет'} />
-      <div className='color-example' style={{ backgroundColor: colorExample }}></div>
-    </div>
+    <>
+      <div className='color-input'>
+        <span>Цвет (RGB)</span>
+        <HexColorInput color={colorInput} onChange={handlePicker} placeholder='3-6 сиволов 0-F' />
+        {/* <input type='text' value={colorInput} onChange={handleColor} maxLength={7} placeholder={'#цвет'} /> */}
+        <div className='color-example' style={{ backgroundColor: colorExample }} onClick={handlePickerOpened}></div>
+      </div>
+      { 
+        pickerOpened && 
+        <HexColorPicker 
+          style={{
+            alignSelf: 'center',
+          }}
+          color={colorExample} 
+          onChange={handlePicker} 
+        /> 
+      }
+    </>
   );
 };
 

@@ -30,28 +30,28 @@ const WidgetSettings: FC<Props> = ({ handleClose }) => {
 
   return (
     <div className='mini-modal'>
-        <button id='w1' onClick={handleWidgetsLayout}>
+        <button id='w1' className={widgetsLayout === '1' ? 'active' : ''} onClick={handleWidgetsLayout}>
           <img src={win1}  />
         </button>
-        <button id='w2v' onClick={handleWidgetsLayout}>
+        <button id='w2v' className={widgetsLayout === '2v' ? 'active' : ''} onClick={handleWidgetsLayout}>
           <img src={win2v}  />
         </button>
-        <button id='w2h' onClick={handleWidgetsLayout}>
+        <button id='w2h' className={widgetsLayout === '2h' ? 'active' : ''}  onClick={handleWidgetsLayout}>
           <img src={win2h}  />
         </button>
-        <button id='w3t' onClick={handleWidgetsLayout}>
+        <button id='w3t' className={widgetsLayout === '3t' ? 'active' : ''} onClick={handleWidgetsLayout}>
           <img src={win3t}  />
         </button>
-        <button id='w3b' onClick={handleWidgetsLayout}>
+        <button id='w3b' className={widgetsLayout === '3b' ? 'active' : ''} onClick={handleWidgetsLayout}>
           <img src={win3b} />
         </button>
-        <button id='w3l' onClick={handleWidgetsLayout}>
+        <button id='w3l' className={widgetsLayout === '3l' ? 'active' : ''} onClick={handleWidgetsLayout}>
           <img src={win3l}  />
         </button>
-        <button id='w3r' onClick={handleWidgetsLayout}>
+        <button id='w3r' className={widgetsLayout === '3r' ? 'active' : ''} onClick={handleWidgetsLayout}>
           <img src={win3r}  />
         </button>
-        <button id='w4' onClick={handleWidgetsLayout}>
+        <button id='w4' className={widgetsLayout === '4' ? 'active' : ''} onClick={handleWidgetsLayout}>
           <img src={win4} />
         </button>
       </div>

@@ -15,7 +15,7 @@ import CircleStyle from 'ol/style/Circle';
 import Fill from 'ol/style/Fill';
 import Icon from 'ol/style/Icon';
 import Stroke from 'ol/style/Stroke';
-import Style from 'ol/style/Style';
+import Style, { StyleLike } from 'ol/style/Style';
 import Text from 'ol/style/Text';
 import { BASE_URL, getMarkerSettings, getPolygonIcons, getRoutes } from '../../api';
 import { IMarkerSettings } from '../../store/modelSettingsSlice';
@@ -26,13 +26,14 @@ import { getVectorContext } from 'ol/render';
 import { Size, toSize } from 'ol/size';
 import { Dispatch } from '@reduxjs/toolkit';
 import { setFeatureInfoID } from '../../store/sidebarSlice';
-import { MapExtent, setExtents } from '../../store/mapSlice';
+import { MapExtent, setExtents, setUserExtentColorPicker } from '../../store/mapSlice';
 import { fromExtent } from 'ol/geom/Polygon';
 import { DragAndDrop, DragBox, DragPan, DragRotate, Extent as ExtentInteraction, Pointer } from 'ol/interaction';
 import { shiftKeyOnly } from 'ol/events/condition';
 import { v4 } from 'uuid';
 import { DragBoxEvent } from 'ol/interaction/DragBox';
 import PointerInteraction from 'ol/interaction/Pointer';
+import { center, centerOfMass, polygon } from '@turf/turf';
 
 type mapObjectType = {
   id: number;
@@ -79,6 +80,10 @@ interface IUserExtents {
   [key: string]: Coordinate[];
 }
 
+interface IUserExtentsToColor {
+  [key: string]: Style;
+}
+
 interface IMarkersObject extends IMarkerSettings {}
 
 class MapCanvas {
@@ -117,6 +122,7 @@ class MapCanvas {
   private currentUserExtentEnd: Coordinate = [0, 0];
   private currentUserExtentID: string = '';
   private userExtents: IUserExtents = {};
+  private userExtentToColor: IUserExtentsToColor = {};
   private currentZoom: number = 3;
   private featureInfoID: number = -1;
   private featureInfo: mapObjectType | null = null;
@@ -217,15 +223,6 @@ class MapCanvas {
 
     this.map.addLayer(this.UserExtentsLayer);
     this.UserExtentsLayer.setSource(this.UserExtentsLayerSource);
-    this.UserExtentsLayer.setStyle(new Style({
-      stroke: new Stroke({
-        width: 3,
-        color: 'rgb(78, 0, 255)',
-      }),
-      fill: new Fill({
-        color: 'rgba(78, 0, 255, 0.4)'
-      }),
-    }));
 
     this.getMarkerSettings();
 
@@ -268,8 +265,21 @@ class MapCanvas {
 
       const feature = new Feature();
 
+      const style = new Style({
+        stroke: new Stroke({
+          width: 3,
+          color: 'rgb(78, 0, 255)',
+        }),
+        fill: new Fill({
+          color: 'rgba(78, 0, 255, 0.4)'
+        }),
+      });
+
+      this.userExtentToColor[id] = style;
+
       feature.setId(id);
       feature.setGeometry(geometry);
+      feature.setStyle(style);
 
       this.UserExtentsLayerSource.addFeature(feature);
       this.userExtents[id] = [
@@ -312,6 +322,11 @@ class MapCanvas {
     popupFitExtentButton.classList.add('popup-btn');
     popupOnClick.appendChild(popupFitExtentButton);
 
+    const popupColorPickerButton = document.createElement('button');
+    popupColorPickerButton.innerHTML = 'Цвет';
+    popupColorPickerButton.classList.add('popup-btn');
+    popupOnClick.appendChild(popupColorPickerButton);
+
     const popupDeleteButton = document.createElement('button');
     popupDeleteButton.innerHTML = 'Удалить';
     popupDeleteButton.classList.add('popup-btn');
@@ -325,18 +340,50 @@ class MapCanvas {
       this.map.getView().fit(new Polygon([this.userExtents[id]]));
     });
 
+    popupColorPickerButton.addEventListener('click', (event) => {
+      popupOnClick.style.display = 'none';
+
+      const id = (event.currentTarget as HTMLButtonElement).dataset.extentId as string;
+
+      const feature = this.UserExtentsLayerSource.getFeatureById(id);
+
+      dispatch(setUserExtentColorPicker({
+        mapId: this.divID,
+        featureId: id,
+      }));
+    });
+
     popupDeleteButton.addEventListener('click', (event) => {
       popupOnClick.style.display = 'none';
 
       const id = (event.currentTarget as HTMLButtonElement).dataset.extentId as string;
 
+      delete this.userExtentToColor[id];
       delete this.userExtents[id];
       this.UserExtentsLayerSource.removeFeature(
         this.UserExtentsLayerSource.getFeatureById(id) as Feature
       );
     });
 
+    this.map.on('pointerdrag', (event) => {
+
+      if (event.originalEvent.srcElement.localName !== 'canvas' && event.originalEvent.srcElement.className !== 'ol-box ol-dragbox') {
+        // this.stopMoving = true;
+        dragPan.getActive() && dragPan.setActive(false);
+      } else {
+        
+        // this.stopMoving = false;
+        !dragPan.getActive() && dragPan.setActive(true);
+      }
+    });
+
+    // this.map.on('movestart', (event) => {
+    //   if (this.stopMoving) event.preventDefault();
+    // })
+
     this.map.on('click', (event) => {
+      if (event.originalEvent.srcElement.localName !== 'canvas') return;
+
       const feature = this.map.forEachFeatureAtPixel(event.pixel, (f) => f);
 
       popupOnClick.style.display = 'none';
@@ -348,6 +395,7 @@ class MapCanvas {
       if (featureID.startsWith('UserExtent')) {
         popupFitExtentButton.dataset.extentId = featureID;
         popupDeleteButton.dataset.extentId = featureID;
+        popupColorPickerButton.dataset.extentId = featureID;
 
         popupOnClick.style.left = `${event.pixel[0] - 45}px`;
         popupOnClick.style.top = `${event.pixel[1] + 20}px`;
@@ -402,7 +450,7 @@ class MapCanvas {
       // this.currentExtent = this.map.getView().calculateExtent(this.map.getSize());
       this.currentZoom = this.map.getView().getZoom() as number;
       const tempExtent = this.getCurrentExtent();
-      this.currentExtent = tempExtent.map(point => [point[0] * 0.99, point[1] * 0.99] as Coordinate);
+      this.currentExtent = tempExtent.map(point => [point[0] * 0.96, point[1] * 0.96] as Coordinate);
 
       // console.log(this.map.getView().calculateExtent(this.map.getSize()));
       // console.log(this.map.getView().calculateExtentInternal(this.map.getSize()));
@@ -610,7 +658,11 @@ class MapCanvas {
 
     const geometry = new Polygon([extent]);
     // const geometry = fromExtent(extent);
-    // geometry.rotate(this.currentRotation, getCenter(extent));
+    // extent[4] = extent[0];
+    // const turfPolygon = polygon([extent]);
+    // console.log(extent, centerOfMass(turfPolygon).geometry.coordinates);
+    // console.log(centerOfMass([extent.map(coord => [coord[0] as number, coord[1] as number])]));
+    // geometry.rotate(this.currentRotation, centerOfMass(turfPolygon).geometry.coordinates);
 
     return geometry;
   }
@@ -644,6 +696,32 @@ class MapCanvas {
     }
   }
 
+  private hexToRgb(hex: string) {
+    const rgb = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex) as RegExpExecArray;
+
+    return `rgba(${parseInt(rgb[1], 16)}, ${parseInt(rgb[2], 16)}, ${parseInt(rgb[3], 16)}, 0.4)`;
+  }
+
+  public changeUserExtentColor(featureId: string, color: string) {
+    const feature = this.UserExtentsLayerSource.getFeatureById(featureId) as Feature;
+
+    const rgbColor = this.hexToRgb(color);
+
+    const style = new Style({
+      stroke: new Stroke({
+        width: 3,
+        color,
+      }),
+      fill: new Fill({
+        color: rgbColor,
+      }),
+    });
+
+    this.userExtentToColor[featureId] = style;
+    
+    feature.setStyle(style);
+  }
+
   private redrawUserExtents() {
     this.UserExtentsLayerSource.clear();
     for (let [id, extent] of Object.entries(this.userExtents)) {
@@ -654,6 +732,7 @@ class MapCanvas {
         const feature = new Feature({});
         feature.setGeometry(geometry);
         feature.setId(id);
+        feature.setStyle(this.userExtentToColor[id]);
 
         this.UserExtentsLayerSource.addFeature(feature);
       } 

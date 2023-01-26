@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux';
 import FeatureInfoModal from '../../FeatureInfoModal';
 import { appendMap } from '../../store/mapSlice';
 import { addNewMap } from '../../store/sidebarSlice';
+import ColorPickerModal from '../Modals/ColorPickerModal';
 import MapCanvas from './MapCanvas';
 
 interface Props {
@@ -48,6 +49,9 @@ const MapCreator: FC<Props> = ({ divID }: Props) => {
     <>
       {
         container && createPortal(<FeatureInfoModal divID={divID} />, container)
+      }
+      { 
+        container && <ColorPickerModal divID={divID} /> 
       }
       {/* {
         container && createPortal(<div id={`popup${divID.slice(3)}`} className='popup'></div>, container)

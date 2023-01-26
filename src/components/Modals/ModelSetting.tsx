@@ -40,7 +40,7 @@ const ModelSetting: FC<ModalProps> = ({ handleClose }) => {
     dispatch(changeMarkerSettings( { type, image, size, opacity, model }));
   };
 
-  const stopPropagation = (event: MouseEvent) => event.stopPropagation()
+  const stopPropagation = (event: MouseEvent) => event.stopPropagation();
 
   return (
     <ModalOverlay handleClose={handleClose}>

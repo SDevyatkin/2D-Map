@@ -72,13 +72,13 @@ const RoutesPanel: FC = () => {
   };
 
   return (
-    <div className='sidebar-panel' style={{ top: '290px' }}>
+    <div id='routes-panel' className='sidebar-panel' style={{ top: '290px' }}>
       <h2>Пройденный путь</h2>
       <div className='selector'>
         <span>Объект</span>
         <Select data={pinObjects} value={object} noneField='-' onChange={onChange} />
       </div>
-      <ColorInput colorInput={colorInput} sendColorInput={handleColorInput} sendColor={handleColor} />
+      <ColorInput parentId='routes-panel' colorInput={colorInput} sendColorInput={handleColorInput} sendColor={handleColor} />
       <div className='buttons'>
         <button className='primary-btn sidebar-btn' disabled={object === 'None'} onClick={drawRoute}>построить</button>
         <button className='primaty-btn sidebar-btn' onClick={clearRoutesLayer}>очистить</button>
