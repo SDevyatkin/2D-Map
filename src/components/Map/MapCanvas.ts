@@ -1,6 +1,7 @@
 import { Feature, Graticule, Map, MapBrowserEvent, View } from 'ol';
-import { Coordinate, createStringXY } from 'ol/coordinate';
-import { buffer, containsExtent, equals, Extent, getCenter, getRotatedViewport, getSize, getTopRight } from 'ol/extent';
+import { Coordinate, createStringXY, rotate} from 'ol/coordinate';
+import GeoJSON from 'ol/format/GeoJSON';
+import { buffer, containsExtent, createOrUpdateFromCoordinate, equals, extend, Extent, getCenter, getRotatedViewport, getSize, getTopRight } from 'ol/extent';
 import { LineString, MultiLineString, Point, Polygon } from 'ol/geom';
 import { Type } from 'ol/geom/Geometry';
 import Draw from 'ol/interaction/Draw';
@@ -8,7 +9,7 @@ import Modify from 'ol/interaction/Modify';
 import Snap from 'ol/interaction/Snap';
 import TileLayer from 'ol/layer/Tile';
 import VectorLayer from 'ol/layer/Vector';
-import { fromLonLat, toLonLat } from 'ol/proj';
+import { fromLonLat, toLonLat, transform } from 'ol/proj';
 import { OSM, XYZ } from 'ol/source';
 import VectorSource from 'ol/source/Vector';
 import CircleStyle from 'ol/style/Circle';
@@ -33,7 +34,11 @@ import { shiftKeyOnly } from 'ol/events/condition';
 import { v4 } from 'uuid';
 import { DragBoxEvent } from 'ol/interaction/DragBox';
 import PointerInteraction from 'ol/interaction/Pointer';
-import { center, centerOfMass, polygon } from '@turf/turf';
+import { BBox, center, centerOfMass, geometry, greatCircle, polygon, squareGrid } from '@turf/turf';
+import rectangleGrid from '@turf/rectangle-grid';
+import { Pixel } from 'ol/pixel';
+import { store } from '../../store/store';
+import { WidgetsLayout } from '../../store/widgetSettingsSlice';
 
 type mapObjectType = {
   id: number;
@@ -80,7 +85,14 @@ interface IUserExtents {
   [key: string]: Coordinate[];
 }
 
-interface IUserExtentsToColor {
+interface IUserExtentsSettings {
+  [key: string]: {
+    style: Style;
+    rotation: number;
+  };
+}
+
+interface IUserExtentStyles {
   [key: string]: Style;
 }
 
@@ -93,6 +105,8 @@ class MapCanvas {
   private TileSource = new OSM();
   private ObjectsLayerSource = new VectorSource();
   private ObjectsLayer = new VectorLayer({ zIndex: 10 });
+  private InfoLayerSource = new VectorSource();
+  private InfoLayer = new VectorLayer({ source: this.InfoLayerSource, zIndex: 9 });
   private PolygonsLayerSource = new VectorSource({});
   private PolygonLayer = new VectorLayer({ zIndex: 8 });
   private DrawLayerSource = new VectorSource({});
@@ -108,6 +122,11 @@ class MapCanvas {
   private UserExtentsLayerSource = new VectorSource({});
   private GridLayer = new VectorLayer({ renderBuffer: Infinity, zIndex: 2 });
   private GridLayerSource = new VectorSource({ features: [new Feature(new Point([0, 1]))] });
+  private MetricGridLayerSource = new VectorSource({});
+  private MetricGridLayer = new VectorLayer({
+    source: this.MetricGridLayerSource,
+    zIndex: 2,
+  });
   // private DistanceModifier = new Modify({ source: this.DistanceLayerSource });
   private FeaturesObject: FeaturesObjectI = {};
   private PolygonsObject: IPolygonsObject = {};
@@ -118,14 +137,20 @@ class MapCanvas {
   private zoomLevel: number = 3;
   private currentCenter: [number, number] = [0, 0];
   private currentExtent: Coordinate[];
-  private currentUserExtentStart: Coordinate = [0, 0];
-  private currentUserExtentEnd: Coordinate = [0, 0];
+  private currentUserExtentStart: Coordinate | null = null;
+  private currentUserExtentEnd: Coordinate | null = null;
   private currentUserExtentID: string = '';
+  private currentTopRightPixel: Pixel | null = null;
+  private currentBottomLeftPixel: Pixel | null = null;
+  // private dragBox: DragBox;
   private userExtents: IUserExtents = {};
-  private userExtentToColor: IUserExtentsToColor = {};
+  private userExtentStyles: IUserExtentStyles = {};
+  private userExtentSettings: IUserExtentsSettings = {};
   private currentZoom: number = 3;
-  private featureInfoID: number = -1;
+  private featureFixedInfoID: number = -1;
+  private featureBindedInfoIds: number[] = [];
   private featureInfo: mapObjectType | null = null;
+  private gridStep: number = 1000;
   private userPoints: Coordinate[] = [];
   private distances: [number, number][] = [];
   private distancesColors: IDistancesColors = {};
@@ -133,6 +158,9 @@ class MapCanvas {
   private routes: IRoutes = {};
   private routesColors: IRoutesColors = {};
   private currentRotation: number = 0;
+  private widgetsLayout: WidgetsLayout = store.getState().widgetSettings.widgetsLayout;
+  private leftPosition: number = 0;
+  private topPosition: number = 0;
   private draw: Draw = new Draw({
     source: this.DrawLayerSource,
     type: 'LineString',
@@ -158,6 +186,8 @@ class MapCanvas {
 
     this.map.addLayer(this.ObjectsLayer);
     this.ObjectsLayer.setSource(this.ObjectsLayerSource);
+
+    this.map.addLayer(this.InfoLayer);
 
     this.map.addLayer(this.PolygonLayer);
     this.PolygonLayer.setSource(this.PolygonsLayerSource);
@@ -246,61 +276,137 @@ class MapCanvas {
 
     // this.map.addInteraction(extentInteraction);
 
-    const dragBox = new DragBox();
+    class SelectionPointerInteraction extends Pointer {
+      private instance: MapCanvas;
 
-    dragBox.on('boxstart', (event) => {
-
-      if (event.mapBrowserEvent.originalEvent.altKey || !event.mapBrowserEvent.originalEvent.shiftKey) {
-        this.currentUserExtentID = '';
-        return;
+      constructor(instance: MapCanvas) {
+        super();
+        this.instance = instance;
       }
 
-      this.currentUserExtentStart = event.coordinate;
-      this.currentUserExtentEnd = event.coordinate;
+      public handleDownEvent(event: MapBrowserEvent<any>) {
+        if (!event.originalEvent.shiftKey || event.originalEvent.altKey) return false;
 
-      const id = `UserExtent_${v4()}`;
-      this.currentUserExtentID = id;
+        this.instance.currentUserExtentStart = event.coordinate;
+        this.instance.currentUserExtentEnd = event.coordinate;
+        this.instance.updateSelectionBox();
+        return true;
+      }
 
-      const geometry = this.getUserExtentGeometry();
+      public handleMoveEvent(event: MapBrowserEvent<any>) {
+        if (this.instance.currentUserExtentStart) {
+          this.instance.currentUserExtentEnd = event.coordinate;
+          this.instance.updateSelectionBox();
+        }
+      }
 
-      const feature = new Feature();
+      public handleUpEvent(event: MapBrowserEvent<any>) {
+        this.instance.updateSelectionBox();
 
-      const style = new Style({
-        stroke: new Stroke({
-          width: 3,
-          color: 'rgb(78, 0, 255)',
-        }),
-        fill: new Fill({
-          color: 'rgba(78, 0, 255, 0.4)'
-        }),
-      });
+        this.instance.addUserExtent();
 
-      this.userExtentToColor[id] = style;
+        const selectionBox = document.getElementById(this.instance.divID)?.querySelector('.selection-box') as HTMLDivElement;
+        selectionBox.style.display = 'none';
 
-      feature.setId(id);
-      feature.setGeometry(geometry);
-      feature.setStyle(style);
+        this.instance.currentUserExtentStart = null;
+        this.instance.currentUserExtentEnd = null;
+        return false;
+      }
+    }
 
-      this.UserExtentsLayerSource.addFeature(feature);
-      this.userExtents[id] = [
-        event.coordinate,
-        event.coordinate,
-        event.coordinate,
-        event.coordinate,
-      ];
+    // const pointerInteraction = new Pointer({
+    //   handleDownEvent: (event) => {
+    //     this.currentUserExtentStart = event.coordinate;
+    //     this.currentUserExtentEnd = event.coordinate;
+    //     this.updateSelectionBox();
+    //     return true;
+    //   },
 
-      // console.log(this.userExtents);
+    //   handleMoveEvent: (event) => {
+    //     console.log(this.currentUserExtentStart);
+    //     if (this.currentUserExtentStart) {
+    //       this.currentUserExtentEnd = event.coordinate;
+    //       this.updateSelectionBox();
+    //     }
+
+    //   },
+
+    //   handleUpEvent: () => {
+    //     this.currentUserExtentStart = null;
+    //     this.currentUserExtentEnd = null;
+    //     this.updateSelectionBox();
+    //     return false;
+    //   },
+    // });
+
+    const pointerInteraction = new SelectionPointerInteraction(this);
+
+    this.map.on('pointermove', (event) => {
+      if (event.dragging || event.originalEvent.srcElement.localName !== 'canvas') {
+
+        pointerInteraction.handleMoveEvent(event);
+      }
     });
 
-    dragBox.on('boxdrag', this.updateUserExtentFeature.bind(this));
+    this.map.addInteraction(pointerInteraction);
+    // this.dragBox = new DragBox();
 
-    dragBox.on('boxend', this.updateUserExtentFeature.bind(this));
+    // this.dragBox.on('boxstart', (event) => {
 
-    this.map.addInteraction(dragBox);
+    //   if (event.mapBrowserEvent.originalEvent.altKey || !event.mapBrowserEvent.originalEvent.shiftKey) {
+    //     this.currentUserExtentID = '';
+    //     return;
+    //   }
 
-    const dragPan = new DragPan();
+    //   this.currentUserExtentStart = event.coordinate;
+    //   this.currentUserExtentEnd = event.coordinate;
 
-    this.map.addInteraction(dragPan);
+    //   const id = `UserExtent_${v4()}`;
+    //   this.currentUserExtentID = id;
+
+    //   const geometry = this.getUserExtentGeometry();
+
+    //   const feature = new Feature();
+
+    //   const style = new Style({
+    //     stroke: new Stroke({
+    //       width: 3,
+    //       color: 'rgb(78, 0, 255)',
+    //     }),
+    //     fill: new Fill({
+    //       color: 'rgba(78, 0, 255, 0.4)'
+    //     }),
+    //   });
+
+    //   this.userExtentSettings[id] = {
+    //     style,
+    //     rotation: this.currentRotation,
+    //   };
+
+    //   feature.setId(id);
+    //   feature.setGeometry(geometry);
+    //   feature.setStyle(style);
+
+    //   this.UserExtentsLayerSource.addFeature(feature);
+    //   this.userExtents[id] = [
+    //     event.coordinate,
+    //     event.coordinate,
+    //     event.coordinate,
+    //     event.coordinate,
+    //   ];
+
+    //   // console.log(this.userExtents);
+    // });
+
+    // this.dragBox.on('boxdrag', this.updateUserExtentFeature.bind(this));
+
+    // this.dragBox.on('boxend', this.updateUserExtentFeature.bind(this));
+
+    // this.map.addInteraction(this.dragBox);
+
+    // const dragPan = new DragPan();
+
+    // this.map.addInteraction(dragPan);
 
     const dragRotate = new DragRotate();
 
@@ -312,36 +418,39 @@ class MapCanvas {
     const mapElement = document.getElementById(divID) as HTMLElement;
     const mapViewport = mapElement.querySelector('.ol-viewport') as HTMLElement;
 
-    const popupOnClick = document.createElement('div');
-    popupOnClick.setAttribute('id', `popupOnClick${this.divID.slice(3)}`);
-    popupOnClick.classList.add('popup', 'popup-flex');
-    mapViewport.appendChild(popupOnClick);
+    const popupClickOnExtent = document.createElement('div');
+    popupClickOnExtent.setAttribute('id', `popupClickOnExtent${this.divID.slice(3)}`);
+    popupClickOnExtent.classList.add('popup', 'popup-flex');
+    mapViewport.appendChild(popupClickOnExtent);
 
     const popupFitExtentButton = document.createElement('button');
     popupFitExtentButton.innerHTML = 'Перейти';
     popupFitExtentButton.classList.add('popup-btn');
-    popupOnClick.appendChild(popupFitExtentButton);
+    popupClickOnExtent.appendChild(popupFitExtentButton);
 
     const popupColorPickerButton = document.createElement('button');
     popupColorPickerButton.innerHTML = 'Цвет';
     popupColorPickerButton.classList.add('popup-btn');
-    popupOnClick.appendChild(popupColorPickerButton);
+    popupClickOnExtent.appendChild(popupColorPickerButton);
 
     const popupDeleteButton = document.createElement('button');
     popupDeleteButton.innerHTML = 'Удалить';
     popupDeleteButton.classList.add('popup-btn');
-    popupOnClick.appendChild(popupDeleteButton);
+    popupClickOnExtent.appendChild(popupDeleteButton);
 
     popupFitExtentButton.addEventListener('click', (event) => {
-      popupOnClick.style.display = 'none';
+      popupClickOnExtent.style.display = 'none';
 
       const id = (event.currentTarget as HTMLButtonElement).dataset.extentId as string;
 
+      const rotation = this.userExtentSettings[id].rotation
+      this.map.getView().setRotation(rotation);
       this.map.getView().fit(new Polygon([this.userExtents[id]]));
     });
+    
 
     popupColorPickerButton.addEventListener('click', (event) => {
-      popupOnClick.style.display = 'none';
+      popupClickOnExtent.style.display = 'none';
 
       const id = (event.currentTarget as HTMLButtonElement).dataset.extentId as string;
 
@@ -354,29 +463,68 @@ class MapCanvas {
     });
 
     popupDeleteButton.addEventListener('click', (event) => {
-      popupOnClick.style.display = 'none';
+      popupClickOnExtent.style.display = 'none';
 
       const id = (event.currentTarget as HTMLButtonElement).dataset.extentId as string;
 
-      delete this.userExtentToColor[id];
+      delete this.userExtentStyles[id];
       delete this.userExtents[id];
       this.UserExtentsLayerSource.removeFeature(
         this.UserExtentsLayerSource.getFeatureById(id) as Feature
       );
     });
 
-    this.map.on('pointerdrag', (event) => {
+    const popupClickOnFeature = document.createElement('div');
+    popupClickOnFeature.setAttribute('id', `popupClickOnFeature${this.divID.slice(3)}`);
+    popupClickOnFeature.classList.add('popup', 'popup-flex');
+    mapViewport.appendChild(popupClickOnFeature);
 
-      if (event.originalEvent.srcElement.localName !== 'canvas' && event.originalEvent.srcElement.className !== 'ol-box ol-dragbox') {
-        // this.stopMoving = true;
-        dragPan.getActive() && dragPan.setActive(false);
-      } else {
-        
-        // this.stopMoving = false;
-        !dragPan.getActive() && dragPan.setActive(true);
-      }
+    const popupBindInfoButton = document.createElement('button');
+    popupBindInfoButton.innerHTML = 'Привязать';
+    popupBindInfoButton.classList.add('popup-btn');
+    popupClickOnFeature.appendChild(popupBindInfoButton);
+
+    const popupFixedInfoButton = document.createElement('button');
+    popupFixedInfoButton.innerHTML = 'Фиксировать';
+    popupFixedInfoButton.classList.add('popup-btn');
+    popupClickOnFeature.appendChild(popupFixedInfoButton);
+
+    popupFixedInfoButton.addEventListener('click', (event) => {
+      popupClickOnFeature.style.display = 'none';
+
+      const featureID = Number((event.currentTarget as HTMLButtonElement).dataset.featureID);
+
+      dispatch(setFeatureInfoID({
+        map: Number(divID.slice(3)), 
+        id: Number(featureID),
+      }));
     });
 
+    popupBindInfoButton.addEventListener('click', (event) => {
+      popupClickOnFeature.style.display = 'none';
+
+      const featureID = Number((event.currentTarget as HTMLButtonElement).dataset.featureID);
+
+      this.featureBindedInfoIds.push(featureID);
+    });
+
+    this.map.on('pointerdrag', (event) => {
+
+      if (event.originalEvent.srcElement.localName !== 'canvas' && event.originalEvent.srcElement.className.includes('react-colorful')) {
+        // this.stopMoving = true;
+        this.map.getInteractions().forEach((interaction) => {
+          if (interaction instanceof DragPan) {
+            this.map.removeInteraction(interaction);
+            setTimeout(() => this.map.addInteraction(new DragPan()), 100);
+          }
+        });
+
+        // setTimeout(() => dragPan.setActive(true), 100);
+      } else {
+        // this.stopMoving = false;
+        // !dragPan.getActive() && dragPan.setActive(true);
+      }
+    });
     // this.map.on('movestart', (event) => {
     //   if (this.stopMoving) event.preventDefault();
     // })
@@ -386,7 +534,7 @@ class MapCanvas {
 
       const feature = this.map.forEachFeatureAtPixel(event.pixel, (f) => f);
 
-      popupOnClick.style.display = 'none';
+      popupClickOnExtent.style.display = 'none';
       
       if (!feature) return;
 
@@ -397,15 +545,16 @@ class MapCanvas {
         popupDeleteButton.dataset.extentId = featureID;
         popupColorPickerButton.dataset.extentId = featureID;
 
-        popupOnClick.style.left = `${event.pixel[0] - 45}px`;
-        popupOnClick.style.top = `${event.pixel[1] + 20}px`;
-        popupOnClick.style.display = 'block';
+        popupClickOnExtent.style.left = `${event.pixel[0] - 45}px`;
+        popupClickOnExtent.style.top = `${event.pixel[1] + 20}px`;
+        popupClickOnExtent.style.display = 'block';
       } else {
-        const id = feature.getId() as number;
-        dispatch(setFeatureInfoID({
-          map: Number(divID.slice(3)), 
-          id,
-        }));
+        popupBindInfoButton.dataset.featureID = featureID;
+        popupFixedInfoButton.dataset.featureID = featureID;
+
+        popupClickOnFeature.style.left = `${event.pixel[0] + 45}px`;
+        popupClickOnFeature.style.top = `${event.pixel[1] - 20}px`;
+        popupClickOnFeature.style.display = `block`;
       }
         // this.featureInfoID = feature.getId() as number;
     });
@@ -446,16 +595,114 @@ class MapCanvas {
       }
     });
 
+    // const step = 1000000;
+    // const extent = [-20026376.39, -20048966.10, 20026376.39, 20048966.10];
+
+    // const graticuleSource = new VectorSource({});
+
+    // const graticule = new VectorLayer({
+    //   source: graticuleSource,
+    //   style: new Style({
+    //     stroke: new Stroke({
+    //       color: 'black',
+    //       width: 2,
+    //     }),
+    //   }),
+    // });
+
+    // const graticule = new Graticule({
+    //   step
+    // })
+
+    // for (let x = extent[0]; x < extent[2]; x += step) {
+    //   const feature = new Feature({});
+    //   const geometry = new LineString([
+    //     [x, extent[1]],
+    //     [x, extent[3]],
+    //   ]);
+    //   feature.setGeometry(geometry);
+    //   graticuleSource.addFeature(feature);
+    // }
+
+    // for (let y = extent[1]; y < extent[3]; y += step) {
+    //   const feature = new Feature({});
+    //   const geometry = new LineString([
+    //     [extent[0], y],
+    //     [extent[2], y],
+    //   ]);
+    //   feature.setGeometry(geometry);
+    //   graticuleSource.addFeature(feature);
+    // }
+
+    // this.map.addLayer(graticule);
+    // const graticule = new Graticule({
+    //   strokeStyle: new Stroke({
+    //     color: 'black',
+    //     width: 4,
+    //   }),
+    //   intervals: [12, 12],
+    // });
+    // console.log(graticule.getSource()?.getFeatures());
+    // this.map.addLayer(graticule);
+
+    this.map.addLayer(this.MetricGridLayer);
+    this.MetricGridLayer.setSource(this.MetricGridLayerSource);
+    this.MetricGridLayer.setStyle(new Style({
+      stroke: new Stroke({
+        width: 1,
+        color: '#00FF00',
+      }),
+      fill: new Fill({
+        color: 'rgba(0, 255, 0, 0.6)'
+      }),
+    }));
+
+    // const DUMMY_EXTENT = [-179, -86, 179, 86] as BBox;
+    // const DUMMY_EXTENT = [-180, -84.83, -170, -75] as BBox;
+    // const cellSide = 100;
+    // const grid = squareGrid(DUMMY_EXTENT, cellSide, { units: 'kilometers' });
+    // console.log(grid);
+
+    // const gridFeatureCollection = squareGrid(DUMMY_EXTENT, cellSide, {});
+    // console.log(gridFeatureCollection);
+    // const gridFeatures: Feature[] = [];
+
+    // gridFeatureCollection.features.forEach(f => {
+    //   // @ts-ignore
+    //   const coords = [f.geometry.coordinates[0].map(coord => fromLonLat([coord[0], coord[1]]) as Coordinate)];
+    //   const geometry = new Polygon(coords);
+    //   const feature = new Feature({});
+
+    //   feature.setGeometry(geometry);
+    //   feature.setStyle(new Style({
+    //     stroke: new Stroke({
+    //       width: 3,
+    //       color: '#00FF00',
+          
+    //     }),
+    //     fill: new Fill({
+    //       color: 'rgba(255, 0, 0, 0.6)'
+    //     }),
+    //   }));
+    //   gridFeatures.push(feature);
+    // });
+
+    // gridFeatures.forEach(f => this.MetricGridLayerSource.addFeature(f));
+
+    // console.log(this.MetricGridLayerSource.getFeatures());
+    // console.log(gridFeature);
+    // this.GridLayerSource.addFeatures(gridFeatures);
+
     this.map.getView().on('propertychange', () => {
       // this.currentExtent = this.map.getView().calculateExtent(this.map.getSize());
       this.currentZoom = this.map.getView().getZoom() as number;
       const tempExtent = this.getCurrentExtent();
-      this.currentExtent = tempExtent.map(point => [point[0] * 0.96, point[1] * 0.96] as Coordinate);
+      this.currentExtent = tempExtent.map(point => [point[0] * 0.95, point[1] * 0.95] as Coordinate);
 
       // console.log(this.map.getView().calculateExtent(this.map.getSize()));
       // console.log(this.map.getView().calculateExtentInternal(this.map.getSize()));
       // console.log(this.map.getView().rotatedExtentForGeometry(this.map));
-      this.redrawUserExtents();
+      // this.redrawUserExtents();
 
       dispatch(setExtents({
         [this.divID]: {
@@ -468,6 +715,9 @@ class MapCanvas {
 
     this.map.getView().on('change:rotation', (event) => {
       this.currentRotation = event.target.values_.rotation;
+      if (Math.abs(event.target.values_.rotation * 57.2958) >= 360) {
+        this.map.getView().setRotation(0);
+      }
       rotationValueElement.innerHTML = `${Math.abs(event.target.values_.rotation * 57.2958).toFixed(2)}&#176`;
     });
 
@@ -541,7 +791,7 @@ class MapCanvas {
 
     this.GridLayer.on('prerender', (event) => {
 
-      let unitSplit = 0.1; // every 0.1 m
+      let unitSplit = this.gridStep * 1000; // every 0.1 m
       let pxToUnit = this.map.getView().getResolution() as number;
       let pxSplit = unitSplit / pxToUnit;
 
@@ -549,10 +799,10 @@ class MapCanvas {
       // event.frameState?.nextExtent
       // this.currentExtent = event.frameState?.extent as Extent;
 
-      while (pxSplit * 2 < 100) {
-        unitSplit *= 2;
-        pxSplit = unitSplit / pxToUnit; // distance between two lines
-      }
+      // while (pxSplit * 2 < 100) {
+      //   unitSplit *= 2;
+      //   pxSplit = unitSplit / pxToUnit; // distance between two lines
+      // }
 
       let startX = Math.round(xmin / unitSplit) * unitSplit; // first line
       let endX = Math.round(xmax / unitSplit) * unitSplit; // last line
@@ -632,6 +882,12 @@ class MapCanvas {
     this.centeredObject = id;
   }
 
+  public setGridStep(step: number) {
+    this.gridStep = step;
+    this.map.getView().setZoom(this.currentZoom + 0.000000000000001);
+    this.map.getView().setZoom(this.currentZoom);
+  }
+
   public changeInteractions(mode: string) {
     this.map.removeInteraction(this.draw);
     this.map.removeInteraction(this.snap);
@@ -639,62 +895,278 @@ class MapCanvas {
     this.addInteractions(mode);
   }
 
-  private getUserExtentGeometry(id?: string, userExtent?: Coordinate[]) {
-    // const extent = [
-    //   Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]),
-    //   Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1]),
-    //   Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]),
-    //   Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1]),
-    // ] as Extent;
+  private updateSelectionBox() {
+    const selectionBox = document.getElementById(this.divID)?.querySelector('.selection-box') as HTMLDivElement;
 
-    const extent = userExtent ? userExtent : [
-      [Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])] as Coordinate,
-      [Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])] as Coordinate,
-      [Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])] as Coordinate,
-      [Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])] as Coordinate,
-    ];
-
-    this.userExtents[id ? id : this.currentUserExtentID] = extent;
-
-    const geometry = new Polygon([extent]);
-    // const geometry = fromExtent(extent);
-    // extent[4] = extent[0];
-    // const turfPolygon = polygon([extent]);
-    // console.log(extent, centerOfMass(turfPolygon).geometry.coordinates);
-    // console.log(centerOfMass([extent.map(coord => [coord[0] as number, coord[1] as number])]));
-    // geometry.rotate(this.currentRotation, centerOfMass(turfPolygon).geometry.coordinates);
-
-    return geometry;
-  }
-
-  private updateUserExtentFeature(event: DragBoxEvent) {
-
-    if (event.mapBrowserEvent.originalEvent.altKey || !event.mapBrowserEvent.originalEvent.shiftKey) {
-      this.currentUserExtentID = '';
+    if (!this.currentUserExtentStart || !this.currentUserExtentEnd) {
+      selectionBox.style.display = 'none';
       return;
     }
 
-    const feature = this.UserExtentsLayerSource.getFeatureById(this.currentUserExtentID);
+    selectionBox.style.display = 'block';
 
-    if (!feature) return;
+    // selectionBox.style.transform = `rotate(${this.currentRotation}rad)`;
 
-    this.currentUserExtentEnd = event.coordinate;
+    const topLeft = this.map.getPixelFromCoordinate(this.currentUserExtentStart);
+    const bottomRight = this.map.getPixelFromCoordinate(this.currentUserExtentEnd);
 
-    this.userExtents[this.currentUserExtentID] = [
-      [Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])],
-      [Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])],
-      [Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])],
-      [Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])],
+    let left = Math.min(topLeft[0], bottomRight[0]);
+    let top = Math.min(topLeft[1], bottomRight[1]);
+    const width = Math.abs(topLeft[0] - bottomRight[0]);
+    const height = Math.abs(topLeft[1] - bottomRight[1]);
+
+    this.currentTopRightPixel = [topLeft[0] > bottomRight[0] ? topLeft[0] - width : topLeft[0] + width, topLeft[1]];
+    this.currentBottomLeftPixel = [topLeft[0], topLeft[1] > bottomRight[1] ? topLeft[1] - height : topLeft[1] + height];
+
+    const shifted = store.getState().Map.sidebarOpened;
+
+    // const widgetsLayout = store.getState().widgetSettings.widgetsLayout;
+
+    if (
+      (this.divID.includes('2') && (this.widgetsLayout === '2v' || this.widgetsLayout === '4' || (this.widgetsLayout.includes('3') && this.widgetsLayout !== '3b'))) ||
+      (this.divID.includes('3') && (this.widgetsLayout === '3b' || this.widgetsLayout === '3r')) || 
+      (this.divID.includes('4') && this.widgetsLayout === '4')
+    ) {
+      if (!this.leftPosition) {
+        this.leftPosition = (document.getElementById('map1') as HTMLDivElement).offsetWidth + 5;
+      }
+    }
+
+    if (
+      (this.divID.includes('2') && (this.widgetsLayout === '2h' || this.widgetsLayout === '3b')) ||
+      (this.divID.includes('3') && (this.widgetsLayout.includes('3') || this.widgetsLayout === '4')) ||
+      (this.divID.includes('4') && this.widgetsLayout === '4')
+    ) {
+      if (!this.topPosition) {
+        this.topPosition = (document.getElementById('map1') as HTMLDivElement).offsetHeight + 5;
+      }
+    }
+
+    left += this.leftPosition;
+    top += this.topPosition;
+
+    selectionBox.style.left = `${shifted ? left + 62 : left}px`;
+    selectionBox.style.top = `${shifted ? top + 2 : top}px`;
+    selectionBox.style.width = `${width}px`;
+    selectionBox.style.height = `${height}px`;
+  }
+
+  private addUserExtent() {
+    const viewProjection = this.map.getView().getProjection();
+
+    if (!this.currentUserExtentStart || !this.currentUserExtentEnd) return;
+
+    const topLeft = this.currentUserExtentStart;
+    const bottomRight = this.currentUserExtentEnd;
+    // const topLeft = toLonLat(this.currentUserExtentStart, viewProjection);
+    // const bottomRight = toLonLat(this.currentUserExtentEnd, viewProjection);
+
+    const left = Math.min(topLeft[0], bottomRight[0]);
+    const right = Math.max(topLeft[0], bottomRight[0]);
+    const bottom = Math.min(topLeft[1], bottomRight[1]);
+    const top = Math.max(topLeft[1], bottomRight[1]);
+
+    const extent = [
+      this.map.getCoordinateFromPixel(this.currentBottomLeftPixel as Pixel),
+      this.currentUserExtentStart,
+      this.map.getCoordinateFromPixel(this.currentTopRightPixel as Pixel),
+      this.currentUserExtentEnd,
     ];
 
-    const geometry = this.getUserExtentGeometry();
+    const geometry = new Polygon([extent]);
 
-    feature?.setGeometry(geometry);
+    const style = new Style({
+      stroke: new Stroke({
+        width: 2,
+        color: 'rgb(78, 0, 255)',
+      }),
+      fill: new Fill({
+        color: 'rgba(78, 0, 255, 0.4)'
+      }),
+    });
 
-    if (event.type === 'boxend') {
-      this.currentUserExtentID = '';
-    }
+    const feature = new Feature({});
+
+    const id = `UserExtent_${v4()}`;
+    feature.setId(id);
+    feature.setGeometry(geometry);
+    feature.setStyle(style);
+
+    this.userExtentStyles[id] = style;
+    this.userExtentSettings[id] = {
+      style,
+      rotation: this.currentRotation,
+    };
+
+    this.UserExtentsLayerSource.addFeature(feature);
+
+    this.leftPosition = 0;
+    this.topPosition = 0;
+    this.userExtents[id] = extent;
   }
+
+  // private getUserExtentGeometry(id?: string, userExtent?: Coordinate[]) {
+  //   // const extent = [
+  //   //   Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]),
+  //   //   Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1]),
+  //   //   Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]),
+  //   //   Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1]),
+  //   // ] as Extent;
+
+  //   const extent = userExtent ? userExtent : [
+  //     // [Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])] as Coordinate,
+  //     // [Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])] as Coordinate,
+  //     // [Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])] as Coordinate,
+  //     // [Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])] as Coordinate,
+  //   ];
+
+  //   // console.log(extent);
+
+  //   const updatedExtent = [...extent];
+
+  //   this.userExtents[id ? id : this.currentUserExtentID] = extent;
+
+  //   const geometry = new Polygon([extent]);
+
+  //   const rotation = id ? this.userExtentSettings[id].rotation : this.currentRotation;
+
+  //   // console.log(rotation);
+  //   if (rotation < 0 ) {
+  //     // geometry.rotate(-rotation * 2, [
+  //     //   (extent[2][0] - extent[0][0]) / 2 + extent[0][0],
+  //     //   (extent[1][1] - extent[0][1]) / 2 + extent[0][1]
+  //     // ]);
+
+  //     // updatedExtent[0] = geometry.getCoordinates()[0][1];
+  //     // updatedExtent[2] = geometry.getCoordinates()[0][3];
+
+
+  //     // updatedExtent[0] = geometry.getCoordinates()[0][1];
+  //     // updatedExtent[2] = geometry.getCoordinates()[0][3];
+  //     // geometry.rotate(-rotation, this.currentUserExtentStart);
+  //     // updatedExtent[2] = geometry.getCoordinates()[0][2];
+  //     // const point2y = geometry.getCoordinates()[0][2][1];
+  //     // console.log(geometry.getCoordinates()[0][2]);
+
+  //     // geometry.rotate(-rotation / 2, this.currentUserExtentEnd);
+  //     // updatedExtent[0] = geometry.getCoordinates()[0][1];
+  //     // geometry.rotate(rotation / 2, this.currentUserExtentEnd);
+  //     // geometry.rotate(rotation, this.currentUserExtentEnd);
+  //     // const point2x = geometry.getCoordinates()[0][2][0];
+  //     // console.log(geometry.getCoordinates()[0][2]);
+
+  //     // geometry.rotate(-rotation, this.currentUserExtentEnd);
+  //     let updatedCoords = geometry.getCoordinates();
+  //     // updatedCoords[0][2][1] += 10000000;
+  //     // console.log(updatedCoords[0]);
+      
+  //     // const point2 = [
+  //     //   extent[3][0] + (updatedCoords[0][2][0] - extent[3][0]),
+  //     //   extent[3][1] + (updatedCoords[0][0][1] - extent[3][1])
+  //     // ] as Coordinate;
+
+  //     // const point0 = [
+  //     //   extent[3][0] - (point2[0] - extent[1][0]),
+  //     //   // updatedCoords[0][0][0] + (updatedCoords[0][0][0] - extent[1][0]),
+  //     //   extent[1][1] - (point2[1] - extent[3][1])
+  //     // ] as Coordinate;
+
+  //     updatedExtent[0] = updatedCoords[0][0];
+  //     updatedExtent[1] = updatedCoords[0][1];
+  //     updatedExtent[2] = updatedCoords[0][2];
+  //     updatedExtent[3] = updatedCoords[0][3];
+
+  //     // console.log([point2x, point2y]);
+  //     // updatedExtent[0] = [this.currentUserExtentStart[0], this.currentUserExtentEnd[1]];
+  //     // updatedExtent[2] = [point2x, point2y];
+  //     // updatedExtent[1] = this.currentUserExtentStart;
+  //     // updatedExtent[3] = this.currentUserExtentEnd;
+
+  //   } 
+  //   // else {
+  //   //   geometry.rotate(rotation, [
+  //   //     (extent[2][0] - extent[0][0]) / 2 + extent[0][0],
+  //   //     (extent[1][1] - extent[0][1]) / 2 + extent[0][1]
+  //   //   ]);
+
+  //   //   let updatedCoords = geometry.getCoordinates();
+  //   //   updatedExtent[1] = updatedCoords[0][1] as Coordinate;
+  //   //   updatedExtent[3] = updatedCoords[0][3] as Coordinate;
+  //   // }
+    
+  //   const updatedGeometry = new Polygon([updatedExtent]);
+  //   // console.log(geometry.getCoordinates());
+  //   // geometry.rotate(-this.currentRotation, [
+  //   //   (extent[2][0] - extent[0][0]) / 2 + extent[0][0],
+  //   //   (extent[1][1] - extent[0][1]) / 2 + extent[0][1]
+  //   // ]);
+  //   // const geometry = fromExtent(extent);
+  //   // extent[4] = extent[0];
+  //   // const turfPolygon = polygon([extent]);
+  //   // console.log(extent, centerOfMass(turfPolygon).geometry.coordinates);
+  //   // console.log(centerOfMass([extent.map(coord => [coord[0] as number, coord[1] as number])]));
+  //   // geometry.rotate(this.currentRotation, centerOfMass(turfPolygon).geometry.coordinates);
+
+  //   return updatedGeometry;
+  // }
+
+  // private updateUserExtentFeature(event: DragBoxEvent) {
+
+  //   if (event.mapBrowserEvent.originalEvent.altKey || !event.mapBrowserEvent.originalEvent.shiftKey) {
+  //     this.currentUserExtentID = '';
+  //     return;
+  //   }
+
+  //   const feature = this.UserExtentsLayerSource.getFeatureById(this.currentUserExtentID);
+
+  //   if (!feature) return;
+
+  //   this.currentUserExtentEnd = event.coordinate;
+
+  //   // this.userExtents[this.currentUserExtentID] = [
+  //   //   [Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])],
+  //   //   [Math.min(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])],
+  //   //   [Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.max(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])],
+  //   //   [Math.max(this.currentUserExtentStart[0], this.currentUserExtentEnd[0]), Math.min(this.currentUserExtentStart[1], this.currentUserExtentEnd[1])],
+  //   // ];
+
+  //   // const geometry = this.getUserExtentGeometry();
+
+  //   // feature?.setGeometry(geometry);
+    
+  //   const view = this.map.getView();
+  //   const extent = this.dragBox.getGeometry().getExtent();
+
+  //   const center = getCenter(extent);
+
+  //   let coord1 = [extent[0], extent[1]];
+  //   let coord2 = [extent[0], extent[3]];
+  //   let coord3 = [extent[2], extent[3]];
+  //   let coord4 = [extent[2], extent[1]];
+
+  //   coord1 = transform(coord1, view.getProjection(), 'EPSG:4326');
+  //   coord2 = transform(coord2, view.getProjection(), 'EPSG:4326');
+  //   coord3 = transform(coord3, view.getProjection(), 'EPSG:4326');
+  //   coord4 = transform(coord4, view.getProjection(), 'EPSG:4326');
+
+  //   coord1 = rotate(coord1, -this.currentRotation);
+  //   coord2 = rotate(coord2, -this.currentRotation);
+  //   coord3 = rotate(coord3, -this.currentRotation);
+  //   coord4 = rotate(coord4, -this.currentRotation);
+
+  //   coord1 = transform(coord1, 'EPSG:4326', view.getProjection()) as Coordinate;
+  //   coord2 = transform(coord2, 'EPSG:4326', view.getProjection()) as Coordinate;
+  //   coord3 = transform(coord3, 'EPSG:4326', view.getProjection()) as Coordinate;
+  //   coord4 = transform(coord4, 'EPSG:4326', view.getProjection()) as Coordinate;
+
+  //   const geometry = new Polygon([[coord2, this.currentUserExtentStart, coord4, this.currentUserExtentEnd]]);
+
+  //   feature.setGeometry(geometry);
+
+  //   if (event.type === 'boxend') {
+  //     this.currentUserExtentID = ''; 
+  //   }
+  // }
 
   private hexToRgb(hex: string) {
     const rgb = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex) as RegExpExecArray;
@@ -717,27 +1189,27 @@ class MapCanvas {
       }),
     });
 
-    this.userExtentToColor[featureId] = style;
+    this.userExtentStyles[featureId] = style;
     
     feature.setStyle(style);
   }
 
-  private redrawUserExtents() {
-    this.UserExtentsLayerSource.clear();
-    for (let [id, extent] of Object.entries(this.userExtents)) {
+  // private redrawUserExtents() {
+  //   this.UserExtentsLayerSource.clear();
+  //   for (let [id, extent] of Object.entries(this.userExtents)) {
 
-      if (this.extentContains(extent)) {
-        const geometry = this.getUserExtentGeometry(id, extent);
+  //     if (this.extentContains(extent)) {
+  //       const geometry = this.getUserExtentGeometry(id, extent);
 
-        const feature = new Feature({});
-        feature.setGeometry(geometry);
-        feature.setId(id);
-        feature.setStyle(this.userExtentToColor[id]);
+  //       const feature = new Feature({});
+  //       feature.setGeometry(geometry);
+  //       feature.setId(id);
+  //       feature.setStyle(this.userExtentSettings[id].style);
 
-        this.UserExtentsLayerSource.addFeature(feature);
-      } 
-    }
-  }
+  //       this.UserExtentsLayerSource.addFeature(feature);
+  //     } 
+  //   }
+  // }
 
   public getCurrentExtent() {
     const extent = getRotatedViewport(
@@ -747,11 +1219,18 @@ class MapCanvas {
       [this.map.getViewport().offsetWidth, this.map.getViewport().offsetHeight],
     );
 
-    const extentByCoords: Coordinate[] = [];
+    const extentByCoords: Coordinate[] = [
+      [Math.min(extent[0], extent[2], extent[4], extent[6]), Math.min(extent[1], extent[3], extent[5], extent[7])] as Coordinate,
+      [Math.min(extent[0], extent[2], extent[4], extent[6]), Math.max(extent[1], extent[3], extent[5], extent[7])] as Coordinate,
+      [Math.max(extent[0], extent[2], extent[4], extent[6]), Math.max(extent[1], extent[3], extent[5], extent[7])] as Coordinate,
+      [Math.max(extent[0], extent[2], extent[4], extent[6]), Math.min(extent[1], extent[3], extent[5], extent[7])] as Coordinate,
+    ];
     
-    for (let i = 0; i < extent.length; i += 2) {
-      extentByCoords.push([extent[i], extent[i + 1]] as Coordinate);
-    }
+    
+
+    // for (let i = 0; i < extent.length; i += 2) {
+    //   extentByCoords.push([extent[i], extent[i + 1]] as Coordinate);
+    // }
 
     return extentByCoords;
   }
@@ -765,11 +1244,27 @@ class MapCanvas {
   }
 
   public getFeatureInfoID() {
-    return this.featureInfoID;
+    return this.featureFixedInfoID;
   }
 
   public setFeatureInfoID() {
-    this.featureInfoID = -1;
+    this.featureFixedInfoID = -1;
+  }
+
+  public addInfoModal(object: number) {
+    this.featureBindedInfoIds.push(object);
+  }
+
+  public clearInfoModals() {
+    this.featureBindedInfoIds = [];
+  }
+
+  public setRotation(rotation: number) {
+    const radians = rotation * (Math.PI / 180);
+    this.currentRotation = radians;
+    this.map.getView().setRotation(radians);
+    // console.log(this.map.getView().getRotation());
+    // rotationValueElement.innerHTML = `${Math.abs(event.target.values_.rotation * 57.2958).toFixed(2)}&#176`;
   }
 
   public getViewLocked() {
@@ -796,9 +1291,13 @@ class MapCanvas {
     this.routesColors[id] = color;
   }
 
+  public setWidgetsLayout(layout: WidgetsLayout) {
+    this.widgetsLayout = layout;
+  };
+
   public getFeatureInfo() {
-    if (this.featureInfoID !== -1) {
-      this.featureInfo = this.FeaturesObject[this.featureInfoID].featureParams;
+    if (this.featureFixedInfoID !== -1) {
+      this.featureInfo = this.FeaturesObject[this.featureFixedInfoID].featureParams;
     } else {
       this.featureInfo = null;
     }
@@ -885,56 +1384,87 @@ class MapCanvas {
   }
 
   private drawDistance(distance: [number, number]) {
-    const coordinates = [];
 
-    const arcGenerator = new GreatCircle(
-      {
-        x: this.FeaturesObject[distance[0]].featureParams.longitude, 
-        y: this.FeaturesObject[distance[0]].featureParams.latitude,
-      },
-      {
-        x: this.FeaturesObject[distance[1]].featureParams.longitude, 
-        y: this.FeaturesObject[distance[1]].featureParams.latitude,
-      }
+    const distanceLine = greatCircle(
+      [
+        this.FeaturesObject[distance[0]].featureParams.longitude,
+        this.FeaturesObject[distance[0]].featureParams.latitude,
+      ],
+      [
+        this.FeaturesObject[distance[1]].featureParams.longitude, 
+        this.FeaturesObject[distance[1]].featureParams.latitude,
+      ],
     );
 
-    const line = arcGenerator.Arc(100, { offset: 10 });
-
-    for (let i = 0; i < line.geometries[0].coords.length - 1; i++) {
-      coordinates.push([
-        line.geometries[0].coords[i],
-        line.geometries[0].coords[i + 1],
-      ]);
-    }
-
-    for (let i = 0; i < coordinates.length; i++) {
-      coordinates[i][0] = fromLonLat(coordinates[i][0]);
-      coordinates[i][1] = fromLonLat(coordinates[i][1]);
-    }
-
-    const marker = new MultiLineString(coordinates);
-
-    const markerFeature = new Feature({
-      name: 'DistanceFeature',
-      geometry: marker,
-    });
-
-    markerFeature.setId(`${distance[0]}_distance_${distance[1]}`);
-
-    markerFeature.setStyle(new Style({
-      stroke: new Stroke({
-        width: 2,
-        color: this.distancesColors[markerFeature.getId() as string],
-      }),
+    // console.log(new GeoJSON().readFeatures(distanceLine).length);
+    this.DistanceLayerSource.clear();
+    this.DistanceLayerSource.addFeatures(new GeoJSON().readFeatures({
+      'type': 'FeatureCollection',
+      'crs': {
+        'type': 'name',
+        'properties': {
+          'name': 'EPSG:3857',
+        },
+      },
+      'features': [
+        {
+          'type': distanceLine.type,
+          'geometry': {
+            'type': distanceLine.geometry.type,
+            'coordinates': distanceLine.geometry.coordinates,
+          }
+        }
+      ],
     }));
+    // const coordinates = [];
 
-    this.DistanceLayerSource.addFeature(markerFeature);
+    // const arcGenerator = new GreatCircle(
+    //   {
+    //     x: this.FeaturesObject[distance[0]].featureParams.longitude, 
+    //     y: this.FeaturesObject[distance[0]].featureParams.latitude,
+    //   },
+    //   {
+    //     x: this.FeaturesObject[distance[1]].featureParams.longitude, 
+    //     y: this.FeaturesObject[distance[1]].featureParams.latitude,
+    //   }
+    // );
+
+    // const line = arcGenerator.Arc(100, { offset: 10 });
+
+    // for (let i = 0; i < line.geometries[0].coords.length - 1; i++) {
+    //   coordinates.push([
+    //     line.geometries[0].coords[i],
+    //     line.geometries[0].coords[i + 1],
+    //   ]);
+    // }
+
+    // for (let i = 0; i < coordinates.length; i++) {
+    //   coordinates[i][0] = fromLonLat(coordinates[i][0]);
+    //   coordinates[i][1] = fromLonLat(coordinates[i][1]);
+    // }
+
+    // const marker = new MultiLineString(coordinates);
+
+    // const markerFeature = new Feature({
+    //   name: 'DistanceFeature',
+    //   geometry: marker,
+    // });
+
+    // markerFeature.setId(`${distance[0]}_distance_${distance[1]}`);
+
+    // markerFeature.setStyle(new Style({
+    //   stroke: new Stroke({
+    //     width: 2,
+    //     color: this.distancesColors[markerFeature.getId() as string],
+    //   }),
+    // }));
+
+    // this.DistanceLayerSource.addFeature(markerFeature);
   }
 
   public drawRoutes(routes: IRoutes) {
 
     for (let key of Object.keys(routes)) {
-      console.log(routes[Number(key)]);
       this.setRouteColor(Number(key), routes[Number(key)].color);
       const coordinates = routes[Number(key)].route.map(point => fromLonLat(point.slice().reverse()));
 
@@ -1002,6 +1532,8 @@ class MapCanvas {
     // // console.log(this.divID, containsPoints);
     // return true;
     // console.log(this.currentExtent, extent);
+    // console.log(this.currentExtent);
+    // console.log(extent);
     if (
       (this.currentExtent[0][0] < extent[0][0] || this.currentExtent[0][1] < extent[0][1]) &&
       (this.currentExtent[1][0] < extent[1][0] || this.currentExtent[1][1] > extent[1][1]) &&
@@ -1111,6 +1643,7 @@ class MapCanvas {
   public async updateFeaturesData(features: IFeatures, idsByAltitude: number[]) {
 
     if (Object.keys(features).length !== 0) {
+      this.InfoLayerSource.clear();
       for (const key in features) {
         if (!this.FeaturesObject.hasOwnProperty(key)) {
 
@@ -1181,6 +1714,43 @@ class MapCanvas {
           this.FeaturesObject[features[key].id].style.getImage().setRotation((features[key].yaw / 57.2958) + this.currentRotation)
         }
 
+        if (features[key].parentID !== 'death' && this.featureBindedInfoIds.includes(Number(key))) {
+          const infoFeature = new Feature({});
+
+          const infoFeatureGeometry = new Point(fromLonLat([features[key].longitude, features[key].latitude]));
+          infoFeature.setGeometry(infoFeatureGeometry);
+
+          infoFeature.setStyle(new Style({
+            text: new Text({
+              font:'lighter 16px Arial, sans-serif',
+              fill: new Fill({ color: '#000' }),
+              stroke: new Stroke({
+                color: '#000',
+                width: 1,
+              }),
+              backgroundFill: new Fill({ color: 'rgba(255, 255, 255, 0.8)' }),
+              backgroundStroke: new Stroke({
+                width: 1,
+                color: '#000',
+              }),
+              text: `
+Номер объекта: ${key}
+Тип объекта: ${features[key].type}
+Широта: ${features[key].latitude.toFixed(3)}
+Долгота: ${features[key].longitude.toFixed(3)}
+Высота: ${features[key].altitude.toFixed(3)}
+Рыскание: ${features[key].yaw.toFixed(3)}
+              `,
+              textAlign: 'start',
+              justify: 'left',
+              padding: [0, 5, 0, 5],
+              offsetX: 30,
+              offsetY: -100,
+            }),
+          }));
+
+          this.InfoLayerSource.addFeature(infoFeature);
+        }
       }
 
       this.idsByAltitude = idsByAltitude;

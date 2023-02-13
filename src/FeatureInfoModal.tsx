@@ -45,7 +45,7 @@ const FeatureInfoModal: FC<Props> = ({ divID }) => {
   };
 
   // console.log(info);
-
+  // console.log(featureInfo);
   return createPortal(
     <>
       {
@@ -55,7 +55,8 @@ const FeatureInfoModal: FC<Props> = ({ divID }) => {
             <div>Тип объекта: {featureInfo.type}</div>
             <div>Широта: {featureInfo.latitude.toFixed(3)}</div>
             <div>Долгота: {featureInfo.longitude.toFixed(3)}</div>
-            <div>Высота: {featureInfo.yaw.toFixed(3)}</div>
+            <div>Высота: {featureInfo.altitude.toFixed(3)}</div>
+            <div>Рыскание: {featureInfo.yaw.toFixed(3)}</div>
             <button className='close-btn' onClick={handleClose}>
               <img src={close} width={15} height={15} />
             </button>

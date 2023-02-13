@@ -1,5 +1,6 @@
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { testConnection } from '../../api';
 import { setFeaturesData } from '../../store/featuresDataSlice';
 import { changePinObjects } from '../../store/pinObjectsSlice';
 import { RootState } from '../../store/store';
@@ -11,7 +12,31 @@ const WebSocketConnection: FC = () => {
   const [ws, setWS] = useState<WebSocket>();
   const Maps = useSelector((state: RootState) => Object.values(state.Map.maps));
 
-  useEffect(() => setWS(new WebSocket('ws://localhost:3001')), []);
+  useEffect(() => {
+    testConnection().then((status) => {
+      // console.log(status);
+      if (status === 200) {
+        setWS(new WebSocket('ws://localhost:3001'));
+      } else {
+        setWS(new WebSocket('ws://192.168.0.110:3001'))
+      }
+    });
+    // try { 
+    //   const response = testConnection();
+    //   let socket = new WebSocket('ws://localhost:3001');
+
+    //   console.log(socket.readyState);
+    //   if (socket.readyState === 1) {
+    //     setWS(socket);
+    //   } else {
+    //     setWS(new WebSocket('ws://192.168.0.110:3001'));
+    //   }
+      
+    // } catch (err) {
+    //   console.log(err); 
+    // }
+    
+  }, []);
 
   useEffect(() => {
     if (!ws) return;

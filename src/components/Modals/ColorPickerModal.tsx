@@ -25,12 +25,20 @@ const ColorPickerModal: FC<Props> = ({ divID }) => {
   const stopPropagation = (event: MouseEvent) => event.stopPropagation();
 
   const applyColor = (event: MouseEvent) => {
+    event.stopPropagation();
     dispath(setUserExtentColorPicker({
       mapId: divID,
       featureId: '',
     }));
 
     Map.changeUserExtentColor(featureId, color);
+  };
+
+  const cancelColorPeak = () => {
+    dispath(setUserExtentColorPicker({
+      mapId: divID,
+      featureId: '',
+    }));
   };
 
   return (
@@ -48,7 +56,10 @@ const ColorPickerModal: FC<Props> = ({ divID }) => {
             <HexColorPicker color={color} onChange={handleColor} />
             <HexColorInput color={color} onChange={handleColor} />
 
-            <button className='primary-btn sidebar-btn' onClick={applyColor}>Применить</button>
+            <div className='buttons'>
+              <button className='primary-btn sidebar-btn' onClick={applyColor}>Применить</button>
+              <button className='primary-btn sidebar-btn' onClick={cancelColorPeak}>Отмена</button>
+            </div>
           </div>, document.getElementById(divID)?.querySelector('.ol-viewport') as HTMLDivElement)
       }
     </>

@@ -9,7 +9,7 @@ import TableRow from './TableRow';
 import close from '../../assets/close.png';
 import { BASE_URL } from '../../api';
 
-const ModelSetting: FC<ModalProps> = ({ handleClose }) => {
+const ModelSetting: FC = () => {
 
   const { type, image, size, opacity, model, imageNames, polygonModels, markerSettings } = useSelector((state: RootState) => state.modelSettings);
   const dispatch = useDispatch();
@@ -43,8 +43,9 @@ const ModelSetting: FC<ModalProps> = ({ handleClose }) => {
   const stopPropagation = (event: MouseEvent) => event.stopPropagation();
 
   return (
-    <ModalOverlay handleClose={handleClose}>
-      <div className='modal' onClick={stopPropagation}>
+    // <ModalOverlay handleClose={handleClose}>
+    //   <div className='modal' onClick={stopPropagation}>
+      <>
         <div className='table'>
           {
             Object.entries(markerSettings).map((data, index) => <TableRow key={data[0]} data={data} index={index}/>)
@@ -72,11 +73,9 @@ const ModelSetting: FC<ModalProps> = ({ handleClose }) => {
           <Select value={model} data={polygonModelNames} noneField='Нет' onChange={handleModelChange} />
         </div>
         <button className='primary-btn sidebar-btn' onClick={saveModelSettings}>Сохранить модель</button>
-        <button className='primary-btn close-btn' onClick={handleClose}>
-          <img src={close} width={20} height={20} />
-        </button>
-      </div>
-    </ModalOverlay>
+      </>
+    //   </div>
+    // </ModalOverlay>
   );
 };
 

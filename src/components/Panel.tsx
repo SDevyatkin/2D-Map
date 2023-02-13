@@ -60,12 +60,12 @@ const Panel: FC<PanelProps> = ({ handleSidebar }) => {
             <img src={win4} width={27} height={24} style={{ borderRadius: '3px' }} />
           </button>
           {/* <button className='primary-btn' onClick={handleFreqChangingMode}>обновлений/сек</button> */}
-          <button className='primary-btn' onClick={handleIconCreationMode}>создание иконки</button>
-          <button className='primary-btn' onClick={handleTypeSettingsMode}>соотношение типов</button>
+          {/* <button className='primary-btn' onClick={handleIconCreationMode}>создание иконки</button>
+          <button className='primary-btn' onClick={handleTypeSettingsMode}>соотношение типов</button> */}
         </div>
       </div>
-      { iconCreationMode && <ModelCreation handleClose={offIconCreationMode} /> }
-      { typeSettingsMode && <ModelSetting handleClose={offTypeSettingsMode} /> }
+      {/* { iconCreationMode && <ModelCreation handleClose={offIconCreationMode} /> }
+      { typeSettingsMode && <ModelSetting handleClose={offTypeSettingsMode} /> } */}
       { widgetSettingsMode && <WidgetSettings handleClose={offWidgetSettingsMode} /> }
     </>
   );

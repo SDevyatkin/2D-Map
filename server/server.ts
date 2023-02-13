@@ -5,7 +5,7 @@ import fs from 'fs';
 import express, { IRoute } from 'express';
 import path from 'path';
 import cors from 'cors';
-import ws from 'ws';
+import ws, { WebSocket } from 'ws';
 import { calculateDistance, distanceRoute } from './utils';
 import { IFeatures, IRoutes, IRoutesByMap, IDistancesByMap } from './interfaces';
 
@@ -16,7 +16,7 @@ interface IClients {
 const PORT: number = 50051;
 const HOST: string = config.get('TCPHost');
 let socketList: IClients = {};
-let socketMapDataFreq: number = 17;
+let socketMapDataFreq: number = 40;
 let clientID: number = 1;
 let routesID: number[] = [];
 const routesByMap: IRoutesByMap = {};
@@ -79,8 +79,8 @@ const getData = () => {
 
             parsedMessage.data.forEach((item, i) => jsonData[parsedMessage.data[i].id] = item);
 
-            console.log(jsonData);
-            console.log('-------------------------------------------');
+            // console.log(jsonData);
+            // console.log('-------------------------------------------');
             const keys = Object.keys(socketList);
             if (!block) {
                 const routes = saveRoutes(jsonData);
@@ -90,6 +90,7 @@ const getData = () => {
                   }
                 });
                 for (let i = 0; i < keys.length; i++) {
+                    // console.log(keys[i]);
                     sendData(jsonData, routes, socketList[keys[i]]);
                 }
                 block = true;
@@ -151,6 +152,16 @@ app.use('/public', express.static(path.join(__dirname, '/public')))
 // app.engine('html', engines.mustache);
 
 app.listen(3002, () => console.log('HTTP сервер запущен на 3002 порту.'));
+
+app.get('/', (_, response: express.Response) => {
+  try {
+    response.status(200).send('Connect');
+    // console.log('response sended');
+  } catch (err) {
+    console.log(err.message);
+    response.status(400);
+  }
+});
 
 app.get('/MapViewSettings', (_, response: express.Response) => {
   try {
@@ -361,17 +372,29 @@ const wsServer = new ws.Server({ port: 3001 });
 
 wsServer.on('connection', onConnect);
 
-function onConnect(wsClient) {
+function onConnect(wsClient: WebSocket) {
 
-    socketList[clientID] = wsClient;
+  const wsClientId = clientID;
 
-    clientID++;
+  socketList[clientID] = wsClient;
 
-    console.log('connection up');
+  // console.log(Object.keys(socketList));
+  // console.log(socketList)
+  clientID++;
 
-    wsClient.on('close', function () {
-        console.log('connection close');
-    });
+  console.log('connection up');
+
+  wsClient.on('close', function () {
+
+    // for (let [key, value] of Object.entries(socketList)) {
+    //   if (value === wsClient) {
+    //     // delete socketList[key];
+    //     console.log(Object.keys(socketList));
+    //   }
+    // }
+    delete socketList[String(wsClientId)];
+    console.log('connection close');
+  });
 }
 
 console.log('WebSocket сервер запущен на 3001 порту');

@@ -50,6 +50,9 @@ const MapCreator: FC<Props> = ({ divID }: Props) => {
       {
         container && createPortal(<FeatureInfoModal divID={divID} />, container)
       }
+      {
+        container && createPortal(<div className='selection-box'></div>, container)
+      }
       { 
         container && <ColorPickerModal divID={divID} /> 
       }

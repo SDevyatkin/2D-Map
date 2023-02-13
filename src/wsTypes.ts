@@ -14,7 +14,7 @@ export interface IFeatures {
     latitude: number;
     yaw: number;
     altitude: number;
-    parentID: number;
+    parentID: number | 'death';
   }
 }
 

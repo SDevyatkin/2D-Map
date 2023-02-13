@@ -10,15 +10,19 @@ const MapSettingsPanel: FC = () => {
 
   // const [viewLocked, setViewLocked] = useState<boolean>(false);
 
-  const { Map, MapID, pinObjects, pinObject, zoomLevel, lockedView } = useSelector((state: RootState) => ({
+  const { Map, MapID, pinObjects, pinObject, zoomLevel, rotation, gridStep, lockedView } = useSelector((state: RootState) => ({
     Map: state.Map.maps[`map${state.Map.selectedMap}`],
     MapID: Number(state.Map.selectedMap),
     pinObjects: state.pinObjects.objects,
     pinObject: state.sidebar[Number(state.Map.selectedMap)].viewSettings.object,
     // selectedPinObject: state.pinObjects.selected,
     zoomLevel: state.sidebar[Number(state.Map.selectedMap)].viewSettings.zoom,
+    rotation: state.sidebar[Number(state.Map.selectedMap)].viewSettings.rotation,
+    gridStep: state.sidebar[Number(state.Map.selectedMap)].viewSettings.gridStep,
     lockedView: state.sidebar[Number(state.Map.selectedMap)].viewSettings.locked,
   }));
+
+  const [prevRotation, setPrevRotation] = useState<number>(0);
 
   // useEffect(() => {
   //   if (!Map) return;
@@ -38,6 +42,8 @@ const MapSettingsPanel: FC = () => {
         object: value === null ? value : Number(value),
         zoom: zoomLevel,
         locked: lockedView,
+        rotation,
+        gridStep,
       },
     }));
 
@@ -56,9 +62,58 @@ const MapSettingsPanel: FC = () => {
         object: pinObject,
         zoom: Number(event.target.value),
         locked: lockedView,
+        rotation,
+        gridStep,
       },
     }));
     Map.setZoomLevel(Number(event.target.value));
+  };
+
+  const handleRotationChange = (event: ChangeEvent<HTMLInputElement>) => {
+    let value = Number(event.target.value);
+
+    if (Math.abs(value) < 6) {
+      if (value >= 0 && value > prevRotation) {
+        value = 6
+      } else if (value >= 0 && value < prevRotation) {
+        value = 0;
+      } else if (value < 0 && value > prevRotation) {
+        value = 0;
+      } else if (value < 0 && value < prevRotation) {
+        value = -6;
+      }
+    }
+
+    setPrevRotation(value);
+    dispatch(setViewSettings({
+      map: MapID,
+      settings: {
+        object: pinObject,
+        zoom: zoomLevel,
+        locked: lockedView,
+        rotation: value,
+        gridStep,
+      },
+    }));
+
+    Map.setRotation(value);
+  };
+
+  const handleGridStep = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = Number(event.target.value);
+
+    dispatch(setViewSettings({
+      map: MapID,
+      settings: {
+        object: pinObject,
+        zoom: zoomLevel,
+        locked: lockedView,
+        rotation,
+        gridStep: value,
+      },
+    }));
+
+    Map.setGridStep(value);
   };
 
   const handleLockedView = (event: ChangeEvent<HTMLInputElement>) => {
@@ -69,6 +124,8 @@ const MapSettingsPanel: FC = () => {
         object: pinObject,
         zoom: zoomLevel,
         locked: event.target.checked,
+        rotation,
+        gridStep,
       },
     }));
     Map.setViewLocked(event.target.checked);
@@ -84,6 +141,14 @@ const MapSettingsPanel: FC = () => {
       <div className='selector'>
         <span>Масштаб</span>
         <Select data={Array.from({length: 30}, (_, i) => i + 1)} value={zoomLevel} noneField='' onChange={handleZoomLevelChange} />
+      </div>
+      <div className='selector'>
+        <span>Поворот</span>
+        <input type='number' value={rotation} max={180} min={-180} step={1} onChange={handleRotationChange} />
+      </div>
+      <div className='selector'>
+        <span>Шаг сетки (км)</span>
+        <input type='number' value={gridStep} step={1} min={0} onChange={handleGridStep} />
       </div>
       <div className='panel-checkbox '>
         <label htmlFor='lock-view'>Блокировать вид</label>

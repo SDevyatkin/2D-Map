@@ -18,13 +18,17 @@ interface Props {
 
 const WidgetSettings: FC<Props> = ({ handleClose }) => {
 
-  const widgetsLayout = useSelector((state: RootState) => state.widgetSettings.widgetsLayout);
+  const { widgetsLayout, maps } = useSelector((state: RootState) => ({
+    widgetsLayout: state.widgetSettings.widgetsLayout,
+    maps: Object.values(state.Map.maps),
+  }));
 
   const dispatch = useDispatch();
 
   const handleWidgetsLayout = (event: MouseEvent<HTMLButtonElement>) => {
     dispatch(setLayout(event.currentTarget.id.slice(1) as WidgetsLayout));
     dispatch(updateExtens());
+    maps.forEach(m => m.setWidgetsLayout(event.currentTarget.id.slice(1) as WidgetsLayout));
     handleClose();
   };
 

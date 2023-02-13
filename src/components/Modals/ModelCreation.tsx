@@ -6,7 +6,7 @@ import { ModalProps } from './modal.interface';
 import ModalOverlay from './ModalOverlay';
 import close from '../../assets/close.png';
 
-const ModelCreation: FC<ModalProps> = ({ handleClose }) => {
+const ModelCreation: FC = () => {
 
   const [polygonManager, setPolygonManager] = useState<DetectPolygonManager | undefined>();
   const [pixelWidth, setPixelWidth] = useState<number>(20);
@@ -50,8 +50,9 @@ const ModelCreation: FC<ModalProps> = ({ handleClose }) => {
   const stopPropagation = (event: MouseEvent) => event.stopPropagation();
 
   return (
-    <ModalOverlay handleClose={handleClose} >
-      <div className='modal' onClick={stopPropagation}>
+    // <ModalOverlay handleClose={handleClose} >
+    //   <div className='modal' onClick={stopPropagation}>
+      <>
         <canvas id='polygonManager' width={900} height={700} />
         <div className='canvas-settings'>
           <div className='canvas-slider'>
@@ -72,11 +73,9 @@ const ModelCreation: FC<ModalProps> = ({ handleClose }) => {
             <button className='primary-btn sidebar-btn' onClick={saveModel} disabled={!modelName}>Сохранить</button>
           </div>
         </div>
-        <button className='primary-btn close-btn' onClick={handleClose}>
-          <img src={close} width={20} height={20} />
-        </button>
-      </div>
-    </ModalOverlay>
+      </>
+    //  </div>
+    //</ModalOverlay>
   );
 };
 

@@ -4,10 +4,14 @@ export type ObjectType = number | 'None';
 
 export type DrawingMode = 'LineString' | 'Polygon' | 'Circle' | 'Point' | 'None';
 
+export type InfoModalPlacement = 'binded' | 'fixed';
+
 export interface IViewSettings {
   object: ObjectType;
   zoom: number;
   locked: boolean;
+  rotation: number;
+  gridStep: number;
 };
 
 export interface IDistanceSettings {
@@ -21,6 +25,11 @@ export interface IRouteSettings {
   color: string,
 }
 
+export interface IInfoModalSettings {
+  object: ObjectType;
+  placement: InfoModalPlacement
+}
+
 export interface SidebarState {
   [key: number]: {
     drawingMode: DrawingMode,
@@ -28,6 +37,7 @@ export interface SidebarState {
     distanceSettings: IDistanceSettings,
     routeSettings: IRouteSettings,
     featureInfoID: number,
+    infoModalSettings: IInfoModalSettings,
   }
 }
 
@@ -38,6 +48,8 @@ export const initialState: SidebarState = {
       object: 'None',
       zoom: 3,
       locked: false,
+      rotation: 0,
+      gridStep: 10000,
     },
     distanceSettings: {
       object1: 'None',
@@ -47,6 +59,10 @@ export const initialState: SidebarState = {
     routeSettings: {
       object: 'None',
       color: '#000',
+    },
+    infoModalSettings: {
+      object: 'None',
+      placement: 'fixed',
     },
     featureInfoID: -1,
   },
@@ -63,6 +79,8 @@ export const sidebarSlice = createSlice({
           object: 'None',
           zoom: 3,
           locked: false,
+          rotation: 0,
+          gridStep: 1000,
         },
         distanceSettings: {
           object1: 'None',
@@ -72,6 +90,10 @@ export const sidebarSlice = createSlice({
         routeSettings: {
           object: 'None',
           color: '#000',
+        },
+        infoModalSettings: {
+          object: 'None',
+          placement: 'fixed',
         },
         featureInfoID: -1,
       };
@@ -93,13 +115,17 @@ export const sidebarSlice = createSlice({
       state[action.payload.map].routeSettings = action.payload.settings;
     },
 
+    setInfoModalSettings: (state, action: PayloadAction<{map: number, settings: IInfoModalSettings}>) => {
+      state[action.payload.map].infoModalSettings = action.payload.settings;
+    },
+
     setFeatureInfoID: (state, action: PayloadAction<{map: number, id: number}>) => {
       state[action.payload.map].featureInfoID = action.payload.id;
     },
   },
 });
 
-export const { addNewMap, setDrawingMode, setViewSettings, 
-  setDistanceSettings, setRouteSettings, setFeatureInfoID } = sidebarSlice.actions;
+export const { addNewMap, setDrawingMode, setViewSettings, setDistanceSettings, 
+  setRouteSettings, setFeatureInfoID, setInfoModalSettings } = sidebarSlice.actions;
 
 export default sidebarSlice.reducer;
