@@ -1,9 +1,12 @@
 import { FC, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useDispatch } from 'react-redux';
+import { getSessionSettings } from '../../api';
+// import { saveSessionSettings } from '../../api';
 import FeatureInfoModal from '../../FeatureInfoModal';
 import { appendMap } from '../../store/mapSlice';
 import { addNewMap } from '../../store/sidebarSlice';
+import { store } from '../../store/store';
 import ColorPickerModal from '../Modals/ColorPickerModal';
 import MapCanvas from './MapCanvas';
 
@@ -31,7 +34,10 @@ const MapCreator: FC<Props> = ({ divID }: Props) => {
       id: divID,
       Map: newMap,
     }));
-    dispatch(addNewMap(Number(divID.slice(3))))
+    dispatch(addNewMap(Number(divID.slice(3))));
+
+    // const state = store.getState();
+    // saveSessionSettings(state.widgetSettings.widgetsLayout, state.sidebar);
 
     const observer = new ResizeObserver((entries) => {
       const rect = entries[0].contentRect;
@@ -43,6 +49,10 @@ const MapCreator: FC<Props> = ({ divID }: Props) => {
     });
 
     observer.observe(div);
+
+    if (divID === 'map4') {
+      getSessionSettings();
+    }
   }, []);
 
   return (

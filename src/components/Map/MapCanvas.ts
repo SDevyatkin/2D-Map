@@ -29,7 +29,7 @@ import { Dispatch } from '@reduxjs/toolkit';
 import { setFeatureInfoID } from '../../store/sidebarSlice';
 import { MapExtent, setExtents, setUserExtentColorPicker } from '../../store/mapSlice';
 import { fromExtent } from 'ol/geom/Polygon';
-import { DragAndDrop, DragBox, DragPan, DragRotate, Extent as ExtentInteraction, Pointer } from 'ol/interaction';
+import { DragAndDrop, DragBox, DragPan, DragRotate, Extent as ExtentInteraction, PinchRotate, PinchZoom, Pointer } from 'ol/interaction';
 import { shiftKeyOnly } from 'ol/events/condition';
 import { v4 } from 'uuid';
 import { DragBoxEvent } from 'ol/interaction/DragBox';
@@ -39,6 +39,8 @@ import rectangleGrid from '@turf/rectangle-grid';
 import { Pixel } from 'ol/pixel';
 import { store } from '../../store/store';
 import { WidgetsLayout } from '../../store/widgetSettingsSlice';
+import { asString } from 'ol/color';
+import { pushError } from '../../store/errorLogSlice';
 
 type mapObjectType = {
   id: number;
@@ -276,6 +278,9 @@ class MapCanvas {
 
     // this.map.addInteraction(extentInteraction);
 
+    this.map.addInteraction(new PinchRotate());
+    this.map.addInteraction(new PinchZoom());
+
     class SelectionPointerInteraction extends Pointer {
       private instance: MapCanvas;
 
@@ -423,6 +428,11 @@ class MapCanvas {
     popupClickOnExtent.classList.add('popup', 'popup-flex');
     mapViewport.appendChild(popupClickOnExtent);
 
+    const popupFitExtentMapSelection = document.createElement('div');
+    popupFitExtentMapSelection.setAttribute('id', `popupFitExtentMapSelection${this.divID.slice(3)}`);
+    popupFitExtentMapSelection.classList.add('popup', 'popup-flex');
+    mapViewport.appendChild(popupFitExtentMapSelection);
+
     const popupFitExtentButton = document.createElement('button');
     popupFitExtentButton.innerHTML = 'Перейти';
     popupFitExtentButton.classList.add('popup-btn');
@@ -438,16 +448,45 @@ class MapCanvas {
     popupDeleteButton.classList.add('popup-btn');
     popupClickOnExtent.appendChild(popupDeleteButton);
 
+    // popupFitExtentButton.addEventListener('click', (event) => {
+    //   popupClickOnExtent.style.display = 'none';
+
+    //   const id = (event.currentTarget as HTMLButtonElement).dataset.extentId as string;
+
+    //   const rotation = this.userExtentSettings[id].rotation
+    //   this.map.getView().setRotation(rotation);
+    //   this.map.getView().fit(new Polygon([this.userExtents[id]]));
+    // });
+    
     popupFitExtentButton.addEventListener('click', (event) => {
       popupClickOnExtent.style.display = 'none';
+      const mapsCount = Number(this.widgetsLayout.slice(0, 1));
+      const extentId = popupFitExtentButton.dataset.extentId as string;
 
-      const id = (event.currentTarget as HTMLButtonElement).dataset.extentId as string;
+      for (let i = 0; i < mapsCount; i++) {
+        popupFitExtentMapSelection.style.display = 'block';
 
-      const rotation = this.userExtentSettings[id].rotation
-      this.map.getView().setRotation(rotation);
-      this.map.getView().fit(new Polygon([this.userExtents[id]]));
+        popupFitExtentMapSelection.style.left = popupClickOnExtent.style.left;
+        popupFitExtentMapSelection.style.top = popupClickOnExtent.style.top;
+
+        const fitExtentByNumberButton = this.createPopupButton(popupFitExtentMapSelection, String(i + 1)); 
+        // popupFitExtentMapSelection.appendChild();
+        fitExtentByNumberButton.addEventListener('click', (event) => {
+          popupFitExtentMapSelection.style.display = 'none';
+          
+          while (popupFitExtentMapSelection.firstChild) {
+            popupFitExtentMapSelection.removeChild(popupFitExtentMapSelection.lastChild as ChildNode);
+          }
+
+          const mapId = `map${fitExtentByNumberButton.textContent}`;
+
+          const Map = store.getState().Map.maps[mapId];
+
+          Map.setRotation(this.userExtentSettings[extentId].rotation);
+          Map.fitExtent(new Polygon([this.userExtents[extentId]]));
+        });
+      }
     });
-    
 
     popupColorPickerButton.addEventListener('click', (event) => {
       popupClickOnExtent.style.display = 'none';
@@ -895,6 +934,30 @@ class MapCanvas {
     this.addInteractions(mode);
   }
 
+  public fitExtent(extent: Polygon) {
+    this.map.getView().fit(extent);
+  }
+
+  private createPopupButton(parent: HTMLElement, text: string, dataset?: { [key: string]: string }) {
+    const popupButton = document.createElement('button');
+    popupButton.innerHTML = text;
+    popupButton.classList.add('popup-btn');
+
+    for (let field in dataset) {
+      popupButton.dataset[field] = dataset[field];
+    }
+
+    parent.appendChild(popupButton);
+
+    // popupButton.addEventListener('click', (event) => {
+    //   parent.style.display = 'none';
+
+    //   const extentId = popupButton.dataset.extentId;
+    // });
+
+    return popupButton;
+  }
+
   private updateSelectionBox() {
     const selectionBox = document.getElementById(this.divID)?.querySelector('.selection-box') as HTMLDivElement;
 
@@ -1168,10 +1231,11 @@ class MapCanvas {
   //   }
   // }
 
-  private hexToRgb(hex: string) {
+  private hexToRgb(hex: string, alpha: number = 0.4) {
     const rgb = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex) as RegExpExecArray;
 
-    return `rgba(${parseInt(rgb[1], 16)}, ${parseInt(rgb[2], 16)}, ${parseInt(rgb[3], 16)}, 0.4)`;
+    console.log(hex);
+    return `rgba(${parseInt(rgb[1], 16)}, ${parseInt(rgb[2], 16)}, ${parseInt(rgb[3], 16)}, ${alpha})`;
   }
 
   public changeUserExtentColor(featureId: string, color: string) {
@@ -1314,15 +1378,18 @@ class MapCanvas {
   }
 
   public pushDistance(distance: [number, number]) {
-    this.distances.push(distance);
+    if (!this.distances.some(d => d[0] === distance[0] && d[1] === distance[1])) {
+      this.distances.push(distance);
 
-    this.DistanceLayerSource.clear();
-    for (let distance of this.distances) {
-      if (
-        this.FeaturesObject[distance[0]].featureParams.parentID !== 'death' && 
-        this.FeaturesObject[distance[1]].featureParams.parentID !== 'death'
-      ) {
-        this.drawDistance(distance);
+      this.DistanceLayerSource.clear();
+      for (let distance of this.distances) {
+        if (
+          (this.FeaturesObject[distance[0]] && this.FeaturesObject[distance[1]]) &&
+          this.FeaturesObject[distance[0]].featureParams.parentID !== 'death' && 
+          this.FeaturesObject[distance[1]].featureParams.parentID !== 'death'
+        ) {
+          this.drawDistance(distance);
+        }
       }
     }
   }
@@ -1394,28 +1461,58 @@ class MapCanvas {
         this.FeaturesObject[distance[1]].featureParams.longitude, 
         this.FeaturesObject[distance[1]].featureParams.latitude,
       ],
+      {
+        npoints: 10,
+      }
     );
 
-    // console.log(new GeoJSON().readFeatures(distanceLine).length);
-    this.DistanceLayerSource.clear();
-    this.DistanceLayerSource.addFeatures(new GeoJSON().readFeatures({
-      'type': 'FeatureCollection',
-      'crs': {
-        'type': 'name',
-        'properties': {
-          'name': 'EPSG:3857',
-        },
-      },
-      'features': [
-        {
-          'type': distanceLine.type,
-          'geometry': {
-            'type': distanceLine.geometry.type,
-            'coordinates': distanceLine.geometry.coordinates,
-          }
-        }
-      ],
+    // @ts-ignore
+    // const  distanceLineGeoJSON = new GeoJSON().writeFeatureObject(distanceLine);
+
+    const featureId = `${distance[0]}_distance_${distance[1]}`;
+
+    const distanceFeature = new Feature({
+      geometry: new LineString(distanceLine.geometry.coordinates.map((c) => fromLonLat(c as Coordinate))),
+    });
+    // const distanceFeature = new Feature({
+    //   geometry: new GeoJSON().readGeometry(distanceLine.geometry),
+    // });
+
+
+    distanceFeature.setId(featureId);
+
+    distanceFeature.setStyle(new Style({
+      stroke: new Stroke({
+        width: 2,
+        color: this.distancesColors[featureId],
+      }),
     }));
+
+    const feature = this.DistanceLayerSource.getFeatureById(featureId);
+
+    if (feature) {
+      this.DistanceLayerSource.removeFeature(feature);
+    }
+
+    this.DistanceLayerSource.addFeature(distanceFeature);
+    // this.DistanceLayerSource.addFeatures(new GeoJSON().readFeatures({
+    //   'type': 'FeatureCollection',
+    //   'crs': {
+    //     'type': 'name',
+    //     'properties': {
+    //       'name': 'EPSG:3857',
+    //     },
+    //   },
+    //   'features': [
+    //     {
+    //       'type': distanceLine.type,
+    //       'geometry': {
+    //         'type': distanceLine.geometry.type,
+    //         'coordinates': distanceLine.geometry.coordinates,
+    //       }
+    //     }
+    //   ],
+    // }));
     // const coordinates = [];
 
     // const arcGenerator = new GreatCircle(
@@ -1474,14 +1571,15 @@ class MapCanvas {
 
         feature.setGeometry(geometry);
         feature.setId(key);
-        // console.log(this.routesColors);
         feature.setStyle(new Style({
           stroke: new Stroke({
             width: 2,
             color: this.routesColors[Number(key)],
+            // color: this.hexToRgb(this.routesColors[Number(key)], 1),
           }),
         }));
 
+        console.log(feature.getStyle());
         this.RoutesLayerSource.addFeature(feature);
       } else {
         (this.RoutesLayerSource.getFeatureById(key)?.getGeometry() as LineString)
@@ -1622,6 +1720,7 @@ class MapCanvas {
           source: this.TileSource,
           // source: new XYZ({ url: 'http://127.0.0.1/tile/{z}/{x}/{y}.png' }),
           preload: 6,
+          useInterimTilesOnError: true,
         }),
       ],
       target: divID,
@@ -1715,6 +1814,7 @@ class MapCanvas {
         }
 
         if (features[key].parentID !== 'death' && this.featureBindedInfoIds.includes(Number(key))) {
+          // console.log(key);
           const infoFeature = new Feature({});
 
           const infoFeatureGeometry = new Point(fromLonLat([features[key].longitude, features[key].latitude]));
@@ -1765,6 +1865,7 @@ class MapCanvas {
     this.DistanceLayerSource.clear();
     for (let distance of this.distances) {
       if (
+        (this.FeaturesObject[distance[0]] && this.FeaturesObject[distance[1]]) &&
         this.FeaturesObject[distance[0]].featureParams.parentID !== 'death' && 
         this.FeaturesObject[distance[1]].featureParams.parentID !== 'death'
       ) {
@@ -1876,8 +1977,10 @@ class MapCanvas {
 
   private async updatePolygonsData() {
 
-    const polygons = await getPolygonIcons();
+    const polygons = store.getState().modelSettings.polygonModels;
+    // const polygons = await getPolygonIcons();
 
+    // console.log(this.FeaturesObject);
     for (let key of Object.keys(this.FeaturesObject)) {
 
       const featureParams = this.FeaturesObject[Number(key)].featureParams;
@@ -1921,7 +2024,10 @@ class MapCanvas {
         } else {
           this.PolygonsLayerSource.removeFeature(this.PolygonsLayerSource.getFeatureById(featureParams.id) as Feature);
         }
+
       } catch (error) {
+        const err = error as Error;
+        store.dispatch(pushError(err));
         console.log(error);
       }
     }

@@ -32,17 +32,20 @@ const RoutesPanel: FC = () => {
   };
 
   const drawRoute = async () => {
+    // console.log(object, color, colorInput);
     if (object !== 'None') {
+      const currentColor = color ? color : '#000';
       const route = await getRoute(object);
-      Map.setRouteColor(object, color);
+      Map.setRouteColor(object, currentColor);
       Map.drawRoutes({
         [Number(object)]: {
           route: route[Number(object)],
-          color,
+          color: colorInput,
         }
       });
-      pushRouteID(object, color, `map${MapID}`);
+      pushRouteID(object, colorInput, `map${MapID}`);
     } 
+    setColorInput('');
     dispatch(setRouteSettings({
       map: MapID,
       settings: {
@@ -58,17 +61,18 @@ const RoutesPanel: FC = () => {
   };
 
   const handleColor = (c: string) => {
-    dispatch(setRouteSettings({
-      map: MapID,
-      settings: {
-        object,
-        color: c,
-      },
-    }));
+    // dispatch(setRouteSettings({
+    //   map: MapID,
+    //   settings: {
+    //     object,
+    //     color: c,
+    //   },
+    // }));
+    setColorInput(c);
   };
 
   const handleColorInput = (c: string) => {
-    setColorInput(c);
+    // setColorInput(c);
   };
 
   return (
@@ -80,7 +84,7 @@ const RoutesPanel: FC = () => {
       </div>
       <ColorInput parentId='routes-panel' colorInput={colorInput} sendColorInput={handleColorInput} sendColor={handleColor} />
       <div className='buttons'>
-        <button className='primary-btn sidebar-btn' disabled={object === 'None'} onClick={drawRoute}>построить</button>
+        <button className='primary-btn sidebar-btn' onClick={drawRoute}>построить</button>
         <button className='primaty-btn sidebar-btn' onClick={clearRoutesLayer}>очистить</button>
       </div>
     </div>

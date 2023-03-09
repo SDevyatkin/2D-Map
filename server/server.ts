@@ -1,13 +1,15 @@
 import net from 'net';
 import config from 'config';
 import dgram from 'dgram';
-import fs from 'fs';
-import express, { IRoute } from 'express';
+import fs, { readFileSync, writeFileSync } from 'fs';
+import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import ws, { WebSocket } from 'ws';
 import { calculateDistance, distanceRoute } from './utils';
-import { IFeatures, IRoutes, IRoutesByMap, IDistancesByMap } from './interfaces';
+import { IFeatures, IRoutes, IRoutesByMap, IDistancesByMap, IRoute } from './interfaces';
+import cookieParser from 'cookie-parser';
+import { v4 } from 'uuid';
 
 interface IClients {
   [key: number]: WebSocket;
@@ -76,10 +78,10 @@ const getData = () => {
     serverData.on('message', (message) => {
         try {
             const parsedMessage = JSON.parse(message.toString());
+            // console.log(parsedMessage);
 
             parsedMessage.data.forEach((item, i) => jsonData[parsedMessage.data[i].id] = item);
 
-            // console.log(jsonData);
             // console.log('-------------------------------------------');
             const keys = Object.keys(socketList);
             if (!block) {
@@ -148,14 +150,21 @@ app.use(cors());
 // app.use('/public', express.static(`${__dirname}/public`));
 app.use(express.json());
 
+app.use(cookieParser('key'));
+
 app.use('/public', express.static(path.join(__dirname, '/public')))
 // app.engine('html', engines.mustache);
 
 app.listen(3002, () => console.log('HTTP сервер запущен на 3002 порту.'));
 
-app.get('/', (_, response: express.Response) => {
+app.get('/', (request: express.Request, response: express.Response) => {
   try {
-    response.status(200).send('Connect');
+    // console.log(cookie);
+    // response.cookie('auth-cookie', cookie, {
+    //   secure: false,
+    //   maxAge: 3600 * 24 * 365,
+    // });
+    response.status(200).send('Connected');
     // console.log('response sended');
   } catch (err) {
     console.log(err.message);
@@ -237,44 +246,162 @@ app.get('/Route/:id', (request: express.Request, response: express.Response) => 
     const routes = JSON.parse(fs.readFileSync('./JSON/Routes.json', 'utf-8'));
     const route = routes[request.params.id];
 
-    response.send({ [Number(request.params.id)]: route });
+    response.send(JSON.stringify({ [Number(request.params.id)]: route }));
   } catch (error) {
     console.log(error.message);
     response.status(400);
   }
 });
 
+// app.post('/Route/:id', (request: express.Request, response: express.Response) => {
+//   try {
+//     console.log('"/Route/:id" post endpoint');
+//     console.log(request.body);
+//     const routes = JSON.parse(fs.readFileSync('./JSON/Routes.json', 'utf-8'));
+//     const route = routes[request.params.id];
+
+//     console.log(Object.keys(routes), route.length);
+
+//     response.send(JSON.stringify({ [Number(request.params.id)]: route }));
+//   } catch (error) {
+//     console.log(error.message);
+//     response.status(400);
+//   }
+// });
+
+app.get('/SessionSettings/:userID', (request: express.Request, response: express.Response) => {
+  try {
+    const sessionSettings = JSON.parse(fs.readFileSync('./JSON/SessionSettings.json', 'utf-8'));
+    const userID = request.params.userID;
+    
+    response.send(sessionSettings[userID] ? sessionSettings[userID]: {});
+  } catch (err) {
+    console.log(err.message);
+    response.status(400);
+  }
+});
+
+app.post('/SidebarSettings/:userId', (request: express.Request, response: express.Response) => {
+  try {
+    const sidebarSettings = request.body;
+    const userId = request.params.userId;
+
+    const sessionSettings = JSON.parse(fs.readFileSync('./JSON/SessionSettings.json', 'utf-8'));
+
+    const userSessionSettings = sessionSettings[userId];
+    const newSessionSettings = {
+      ...sessionSettings,
+      [userId]: {
+        ...userSessionSettings,
+        sidebarSettings
+      },
+    };
+
+    if (!newSessionSettings[userId].hasOwnProperty('map1')) {
+      newSessionSettings[userId][1] = {};
+      newSessionSettings[userId][2] = {};
+      newSessionSettings[userId][3] = {};
+      newSessionSettings[userId][4] = {};
+    }
+
+    fs.writeFileSync('./JSON/SessionSettings.json', JSON.stringify(newSessionSettings));
+  } catch (err) {
+    console.log(err.message);
+    response.sendStatus(400);
+  }
+});
+
+app.post('/WidgetsLayout/:userId', (request: express.Request, response: express.Response) => {
+  try {
+    const { widgetsLayout } = request.body;
+    const userId = request.params.userId;
+
+    const sessionSettings = JSON.parse(fs.readFileSync('./JSON/SessionSettings.json', 'utf-8'));
+    const userSessionSettings = sessionSettings[userId];
+
+    const newSessionSettings = {
+      ...sessionSettings,
+      [userId]: {
+        ...userSessionSettings,
+        widgetsLayout
+      },
+    };
+
+    fs.writeFileSync('./JSON/SessionSettings.json', JSON.stringify(newSessionSettings));
+  } catch (err) {
+    console.log(err.message);
+    response.sendStatus(400);
+  }
+});
+
 app.post('/clearRoutes/:mapID', (request: express.Request, response: express.Response) => {
   try {
-    const mapID = `map${request.params.mapID}`;
+    const id = request.params.mapID;
+    const userId = request.body.userId;
+    const mapID = `map${id}`;
 
-    delete routesByMap[mapID];
+    delete routesByMap[userId][mapID];
+
+    const sessionSettings = JSON.parse(fs.readFileSync('./JSON/SessionSettings.json', 'utf-8'));
+
+    sessionSettings[userId][id].routes = [];
+
+    fs.writeFileSync('./JSON/SessionSettings.json', JSON.stringify(sessionSettings));
+
   } catch (error) {
     console.log(error.message);
     response.sendStatus(400);
   }
 });
 
-app.post('/Route', (request: express.Request, response: express.Response) => {
+app.post('/RouteID', (request: express.Request, response: express.Response) => {
   try {
-    const id = Number(request.body.id)
+    const object = Number(request.body.object);
     const mapID = request.body.mapID;
+    const id = Number(mapID.slice(3));
     const color = request.body.color;
+    const userId = request.body.userId
 
-    if (routesByMap.hasOwnProperty(mapID)) {
-      routesByMap[mapID].push({
-        id, 
-        color,
-      });
+    const route: IRoute = {
+      object, 
+      color,
+    };
+
+    // console.log(mapSettings);
+
+    if (!routesByMap.hasOwnProperty(userId)) {
+      routesByMap[userId] = {
+        [mapID]: [route],
+      };
+    } else if (routesByMap[userId].hasOwnProperty(mapID)) {
+      routesByMap[userId][mapID].push(route);
     } else {
-      routesByMap[mapID] = [{
-        id, 
-        color,
-      }];
+      routesByMap[userId][mapID] = [route];
     }
 
-    routesID.push(id);
-    response.send(`Пройденный путь объекта ${id} построен.`);
+    routesID.push(object);
+
+    const sessionSettings = JSON.parse(fs.readFileSync('./JSON/SessionSettings.json', 'utf-8'));
+    const mapSettings = sessionSettings[userId][mapID];
+
+    if (mapSettings.hasOwnProperty('routes')) {
+      if (!mapSettings.routes.find(r => r.object === object)) {
+        const newRoutes: IRoute[] = [...mapSettings.routes, route];
+        mapSettings.routes = newRoutes;
+      } else {
+        const index = mapSettings.routes.findIndex(r => r.object === object);
+        mapSettings.routes[index] = route;
+      }
+    } else {
+      mapSettings.routes = [route];
+    }
+
+    // console.log(mapSettings);
+    sessionSettings[userId][id] = mapSettings;
+
+    fs.writeFileSync('./JSON/SessionSettings.json', JSON.stringify(sessionSettings));
+
+    response.send(`Пройденный путь объекта ${object} построен.`);
   } catch (error) {
     console.log(error.message);
     response.sendStatus(400);
@@ -284,10 +411,13 @@ app.post('/Route', (request: express.Request, response: express.Response) => {
 app.post('/Distance', (request: express.Request, response: express.Response) => {
   try {
     const mapID = request.body.mapID;
+    const id = Number(mapID.slice(3));
     let first = Number(request.body.first);
     let second = Number(request.body.second);
     const color = request.body.color;
+    const userId = request.body.userId;
 
+    console.log(userId);
     if (first < second) {
       const temp = first;
       first = second;
@@ -296,20 +426,110 @@ app.post('/Distance', (request: express.Request, response: express.Response) => 
 
     const distance = `${first}_distance_${second}`;
 
-    if (distancesByMap.hasOwnProperty(mapID) && !distancesByMap[mapID].some((d) => d.distance === distance)) {
-      distancesByMap[mapID].push({
-        distance,
-        color,
-      });
+    const distanceValue = {
+      distance,
+      color,
+    };
+
+    if (!distancesByMap.hasOwnProperty(userId)) {
+      distancesByMap[userId] = {
+        [mapID]: [distanceValue],
+      };
+    } else if (distancesByMap[userId].hasOwnProperty(mapID) && !distancesByMap[userId][mapID].some((d) => d.distance === distance)) {
+      distancesByMap[userId][mapID].push(distanceValue);
     } else {
-      distancesByMap[mapID] = [{
-        distance,
-        color,
-      }];
+      distancesByMap[userId][mapID] = [distanceValue];
     }
+
+    const sessionSettings = JSON.parse(readFileSync('./JSON/SessionSettings.json', 'utf-8'));
+
+    const mapSettings = sessionSettings[userId][id];
+
+    if (mapSettings.hasOwnProperty('distances')) {
+      if (!mapSettings.distances.find(d => d.distance === distance)) mapSettings.distances.push(distanceValue);
+    } else {
+      mapSettings.distances = [distanceValue];
+    }
+
+    sessionSettings[userId][id] = mapSettings;
+
+    console.log(sessionSettings);
+    writeFileSync('./JSON/SessionSettings.json', JSON.stringify(sessionSettings));
 
   } catch (error) {
     console.log(error.message);
+    response.sendStatus(400);
+  }
+});
+
+app.post('/clearDistance/:mapID', (request: express.Request, response: express.Response) => {
+  try {
+    const mapID = request.params.mapID;
+    const id = Number(mapID.slice(3));
+    const userId = request.body.userId;
+
+    const sessionSettings = JSON.parse(readFileSync('./JSON/SessionSettings.json', 'utf-8'));
+
+    sessionSettings[userId][mapID].distances = [];
+    
+    writeFileSync('./JSON/SessionSettings.json', JSON.stringify(sessionSettings));
+  } catch (err) {
+    console.log(err.message);
+    response.sendStatus(400);
+  }
+});
+
+app.post('/InfoModal', (request: express.Request, response: express.Response) => {
+  try {
+    const mapID = request.body.mapID;
+    const id = Number(mapID.slice(3));
+    const object = request.body.object;
+    const placement = request.body.placement;
+    const userId = request.body.userId;
+
+    const sessionSettings = JSON.parse(readFileSync('./JSON/SessionSettings.json', 'utf-8'));
+
+    if (!sessionSettings[userId][id].hasOwnProperty('infoModals')) {
+      sessionSettings[userId][id].infoModals = {
+        fixed: -1,
+        binded: [],
+      };
+    }
+
+    const mapInfoModals = sessionSettings[userId][id].infoModals;
+
+    if (placement === 'fixed') {
+      mapInfoModals.fixed = object;
+    } else if (Array.isArray(mapInfoModals.binded) && !mapInfoModals.binded.find(i => i === object)) {
+      mapInfoModals.binded.push(object);
+    }
+
+    sessionSettings[userId][id].infoModals = mapInfoModals;
+
+    writeFileSync('./JSON/SessionSettings.json', JSON.stringify(sessionSettings));
+
+  } catch (err) {
+    console.log(err.message);
+    response.sendStatus(400);
+  }
+});
+
+app.post('/ClearInfoModals', (request: express.Request, response: express.Response) => {
+  try {
+    const mapID = request.body.mapID;
+    const id = Number(mapID.slice(3));
+    const userId = request.body.userId;
+
+    const sessionSettings = JSON.parse(readFileSync('./JSON/SessionSettings.json', 'utf-8'));
+
+    console.log(sessionSettings[userId][mapID].infoModals);
+    sessionSettings[userId][mapID].infoModals.binded = [];
+    sessionSettings[userId][mapID].infoModals.fixed = -1;
+    console.log(sessionSettings[userId][mapID].infoModals);
+
+    writeFileSync('./JSON/SessionSettings.json', JSON.stringify(sessionSettings));
+  } catch (err) {
+    console.log(err.message);
     response.sendStatus(400);
   }
 });
@@ -371,6 +591,9 @@ const sendData = (features: IFeatures, routes: IRoutes, wsClient: WebSocket | nu
 const wsServer = new ws.Server({ port: 3001 });
 
 wsServer.on('connection', onConnect);
+wsServer.on('listening', (data) => {
+
+});
 
 function onConnect(wsClient: WebSocket) {
 

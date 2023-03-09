@@ -1,9 +1,16 @@
 import { IMarkerSettings } from './store/modelSettingsSlice';
 import axios from 'axios';
-import { setTimeout } from 'timers/promises';
+import { InfoModalPlacement, setFeatureInfoID, setSidebarSettings, SidebarState } from './store/sidebarSlice';
+import { store } from './store/store';
+import { setLayout } from './store/widgetSettingsSlice';
+import { sessionSettingsType } from './components/Map/Map.interface';
+import { v4 } from 'uuid';
+import getCookie from './getCookie';
+import { pushError } from './store/errorLogSlice';
 
 const PORT = 3002;
 export let BASE_URL = `http://localhost:${PORT}`;
+export let USER_ID = '';
 
 export const setBaseURL = () => {
   BASE_URL = `http://192.168.0.110:${PORT}`;
@@ -21,13 +28,48 @@ export const setBaseURL = () => {
 //   return false;
 // };
 
+// function setCookie(name: string, value: string, options: any = {}) {
+
+//   options = {
+//     path: '/',
+//     // при необходимости добавьте другие значения по умолчанию
+//     ...options
+//   };
+
+//   if (options.expires instanceof Date) {
+//     options.expires = options.expires.toUTCString();
+//   }
+
+//   let updatedCookie = encodeURIComponent(name) + "=" + encodeURIComponent(value);
+
+//   for (let optionKey in options) {
+//     updatedCookie += "; " + optionKey;
+//     let optionValue = options[optionKey];
+//     if (optionValue !== true) {
+//       updatedCookie += "=" + optionValue;
+//     }
+//   }
+
+//   document.cookie = updatedCookie;
+// }
+
 export const testConnection = async () => {
 
   try {
-    const response = await fetch(`${BASE_URL}/`);
+    const hasCookie = document.cookie.includes('user=');
+
+    if (!hasCookie) {
+      document.cookie = `user=${v4()}; max-age=${3600 * 24 * 365}`;
+    }
+
+    USER_ID =  document.cookie.split('=')[1];
+
+    const response = await fetch(`${BASE_URL}/`, { mode: 'cors' });
     // console.log(response);
     return response.status;
   } catch (err) {
+    const error = err as Error;
+    store.dispatch(pushError(error));
     console.log(err);
   }
 };
@@ -41,6 +83,8 @@ export const getMapURL = async () => {
     // console.log(mapURL);
     return mapURL;
   } catch (err) {
+    const error = err as Error;
+    store.dispatch(pushError(error));
     console.log(err);
     // console.log(BASE_URL);
     // try {
@@ -64,7 +108,8 @@ export const getMapViewSettings = async () => {
 
     return mapSettings;
   } catch (err) {
-    
+    const error = err as Error;
+    store.dispatch(pushError(error));
     console.log(err);
   }
 };
@@ -77,7 +122,8 @@ export const getImageNames = async () => {
 
     return imageNames.data;
   } catch (err) {
-    
+    const error = err as Error;
+    store.dispatch(pushError(error));
     console.log(err);
   }
 };
@@ -90,7 +136,8 @@ export const getPolygonIcons = async () => {
 
     return polygonIcons;
   } catch (err) {
-    
+    const error = err as Error;
+    store.dispatch(pushError(error));
     console.log(err);
   }
 
@@ -116,7 +163,8 @@ export const getMarkerSettings = async () => {
       return editedMarkerSettings;
   } catch (err) {
     console.log(err);
-
+    const error = err as Error;
+    store.dispatch(pushError(error));
       // try {
       //   const response = await fetch(`http://192.168.0.110:3002/MarkerSettings`, { mode: 'cors' });
       //   const markerSettings = await response.json();
@@ -147,7 +195,8 @@ export const getDistance = async (first: number, second: number) => {
 
     return distance;
   } catch (err) {
-    
+    const error = err as Error;
+    store.dispatch(pushError(error));
     console.log(err);
   }
 };
@@ -155,12 +204,24 @@ export const getDistance = async (first: number, second: number) => {
 export const getRoute = async (object: number) => {
 
   try {
-    const response = await fetch(`${BASE_URL}/Route/${object}`, { mode: 'cors' });
+    const url = `${BASE_URL}/Route/${object}`;
+    const response = await fetch(url, { mode: 'cors' });
+    // const response = await axios.get(
+    //   url,
+    //   {
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //       'Access-Control-Allow-Origin': '*',
+    //     },
+    //   },
+    // );
+
     const route = await response.json();
 
     return route;
   } catch (err) {
-    
+    const error = err as Error;
+    store.dispatch(pushError(error));
     console.log(err);
   }
 };
@@ -177,7 +238,84 @@ export const getRoutes = async (ids: number[]) => {
     
     return routes;
   } catch (err) {
+    const error = err as Error;
+    store.dispatch(pushError(error));
+    console.log(err);
+  }
+};
 
+export const getSessionSettings = async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/SessionSettings/${USER_ID}`, { mode: 'cors' });
+
+    const sessionSettings: sessionSettingsType = await response.json();
+    store.dispatch(setLayout(sessionSettings.widgetsLayout));
+
+    const sidebarSettings= sessionSettings.sidebarSettings;
+    // for (let mapID in sessionSettings.sidebarSettings) {
+    //   // sidebarSettings[Number(mapID.slice(3))] = sessionSettings.sidebarSettings[mapID];
+    // }
+    store.dispatch(setSidebarSettings(sidebarSettings));
+
+    // console.log(sidebarSettings);
+    for (let id in sidebarSettings) {
+      const mapID = `map${id}`;
+      const Map = store.getState().Map.maps[mapID];
+
+      const viewLocked = sidebarSettings[id].viewSettings.locked;
+      Map.setViewLocked(viewLocked);
+      Map.setWidgetsLayout(sessionSettings.widgetsLayout);
+
+      const centeredObject = sidebarSettings[id].viewSettings.object;
+      const centeredObjectValue = centeredObject !== 'None' ? Number(sidebarSettings[id].viewSettings.object) : centeredObject
+      viewLocked ? 
+        Map.setCenteredObject(centeredObjectValue) :
+        Map.translateView(centeredObjectValue);
+
+      Map.setZoomLevel(Number(sidebarSettings[id].viewSettings.zoom));
+      Map.setRotation(Number(sidebarSettings[id].viewSettings.rotation));
+      Map.setGridStep(Number(sidebarSettings[id].viewSettings.gridStep));
+
+      const mapSettings = sessionSettings[mapID];
+
+      // mapSettings.routes && mapSettings.routes.forEach(async (route) => {
+      //   const routes = await getRoute(route.object);
+
+      //   if (Object.keys(routes).length) {
+      //     Map.setRouteColor(route.object, route.color);
+
+      //     Map.drawRoutes({
+      //       [route.object]: {
+      //         route: routes[route.object],
+      //         color: route.color,
+      //       },
+      //     });
+      //   }
+      // });
+
+      mapSettings.distances && mapSettings.distances.forEach((distance) => {
+        const [id1, _, id2] = distance.distance.split('_');
+        const object1 = Number(id1);
+        const object2 = Number(id2);
+
+        Map.setDistanceColor(object1, object2, distance.color);
+        Map.pushDistance(object1 > object2 ? [object1, object2] : [object2, object1]);
+        // console.log(distance);
+      });
+
+      if (mapSettings.infoModals) {
+        store.dispatch(setFeatureInfoID({
+          map: Number(id),
+          id: mapSettings.infoModals.fixed,
+        }));
+
+        mapSettings.infoModals.binded.forEach(id => Map.addInfoModal(id));
+      }
+    }
+    
+  } catch (err) {
+    const error = err as Error;
+    store.dispatch(pushError(error));
     console.log(err);
   }
 };
@@ -191,10 +329,29 @@ export const saveDistance = async (mapID: string, first: number, second: number,
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ mapID, first, second, color }),
+      body: JSON.stringify({ mapID, first, second, color, userId: USER_ID }),
     });
-  } catch (error) {
-    console.log(error);
+  } catch (err) {
+    const error = err as Error;
+    store.dispatch(pushError(error));
+    console.log(err);
+  }
+};
+
+export const clearDistances = async (mapID: string) => {
+  try {
+    await fetch(`${BASE_URL}/clearDistance/${mapID}`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId: USER_ID }),
+    });
+  } catch (err) {
+    const error = err as Error;
+    store.dispatch(pushError(error));
+    console.log(err);
   }
 };
 
@@ -207,42 +364,131 @@ export const stopSendRoutes = async (mapID: number) => {
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ userId: USER_ID }),
     });
-  } catch (error) {
-    console.log(error);
+  } catch (err) {
+    const error = err as Error;
+    store.dispatch(pushError(error));
+    console.log(err);
   }
 };
 
-export const pushRouteID = async (id: number, color: string, mapID: string) => {
-  console.log(color);
+export const pushRouteID = async (object: number, color: string, mapID: string) => {
   try {
-    await fetch(`${BASE_URL}/Route`, {
+    await fetch(`${BASE_URL}/RouteID`, {
       method: 'POST',
       mode: 'cors',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ id, color, mapID }),
+      body: JSON.stringify({ object, color, mapID, userId: USER_ID }),
     });
-  } catch (error) {
-    console.log(error);
+  } catch (err) {
+    const error = err as Error;
+    store.dispatch(pushError(error));
+    console.log(err);
+  }
+};
+
+export const saveInfoModal = async (mapID: string, object: number, placement: InfoModalPlacement) => {
+  try {
+    await fetch(`${BASE_URL}/InfoModal`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ mapID, object, placement, userId: USER_ID }),
+    });
+  } catch (err) {
+    const error = err as Error;
+    store.dispatch(pushError(error));
+    console.log(err);
+  }
+};
+
+export const deleteInfoModals = async (mapID: string) => {
+  try {
+    await fetch(`${BASE_URL}/ClearInfoModals`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ mapID, userId: USER_ID }),
+    });
+  } catch (err) {
+    const error = err as Error;
+    store.dispatch(pushError(error));
+    console.log(err);
   }
 };
 
 export const saveNewPolygonIcon = async (modelName: string, modelPoints: number[][]) => {
-  const response = await fetch(`${BASE_URL}/PolygonIcons`, {
-    method: 'POST',
-    mode: 'cors',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ 
-      name: modelName,
-      points: modelPoints 
-    }),
-  });
+  try {
+    const response = await fetch(`${BASE_URL}/PolygonIcons`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        name: modelName,
+        points: modelPoints 
+      }),
+    });
 
-  return response.status;
+    return response.status;
+  } catch (err) {
+    const error = err as Error;
+    store.dispatch(pushError(error));
+    console.log(err);
+  }
+};
+
+// export const saveSessionSettings = async (widgetsLayout: string, sidebarSettings: SidebarState) => {
+export const saveSessionSidebarSettings = async (sidebarSettings: SidebarState) => {
+  // const widgetsLayout = store.getState().widgetSettings.widgetsLayout;
+  // const sidebarSettings = store.getState().sidebar;
+
+  try {
+    const response = await fetch(`${BASE_URL}/SidebarSettings/:${USER_ID}`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...sidebarSettings,
+      }),
+    });
+  } catch (err) {
+    const error = err as Error;
+    store.dispatch(pushError(error));
+    console.log(err);
+  }
+};
+
+export const saveWidgetsLayout = async (widgetsLayout: string) => {
+  // const widgetsLayout = store.getState().widgetSettings.widgetsLayout;
+  // const sidebarSettings = store.getState().sidebar;
+
+  try {
+    const response = await fetch(`${BASE_URL}/WidgetsLayout/${USER_ID}`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        widgetsLayout,
+      }),
+    });
+  } catch (err) {
+    const error = err as Error;
+    store.dispatch(pushError(error));
+    console.log(err);
+  }
 };
 
 export const saveMarkerSettings = async (settings: IMarkerSettings) => {
@@ -257,8 +503,10 @@ export const saveMarkerSettings = async (settings: IMarkerSettings) => {
         },
       }
     );
-  } catch (error) {
-    console.log(error);
+  } catch (err) {
+    const error = err as Error;
+    store.dispatch(pushError(error));
+    console.log(err);
   }
 
   

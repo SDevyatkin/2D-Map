@@ -1,6 +1,6 @@
 import { ChangeEvent, FC, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { saveDistance } from '../../api';
+import { clearDistances, saveDistance } from '../../api';
 import { setDistanceSettings } from '../../store/sidebarSlice';
 import { RootState } from '../../store/store';
 import Select from '../Select';
@@ -53,9 +53,12 @@ const DistancePanel: FC = () => {
   };
 
   const drawDistance = () => {
-    saveDistance(`map${MapID}`, object1 as number, object2 as number, color);
-    Map.setDistanceColor(object1 as number, object2 as number, color);
-    Map.pushDistance([object1 as number, object2 as number]);
+    const obj1 = Number(object1);
+    const obj2 = Number(object2);
+
+    saveDistance(`map${MapID}`, obj1, obj2, color);
+    Map.setDistanceColor(obj1, obj2, color);
+    Map.pushDistance(obj1 > obj2 ? [obj1, obj2] : [obj2, obj1]);
     dispatch(setDistanceSettings({
       map: MapID,
       settings: {
@@ -69,6 +72,7 @@ const DistancePanel: FC = () => {
   };
 
   const clearDistanceLayer = () => {
+    clearDistances(`map${MapID}`);
     Map.clearDistanceLayer();
   };
 

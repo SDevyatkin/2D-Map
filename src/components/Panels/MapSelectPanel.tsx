@@ -32,7 +32,6 @@ const MapSelectPanel: FC<Props> = ({ onClose }) => {
       className='sidebar-panel' 
       style={{ 
         top: '50px',
-        backgroundColor: '#46464B',
         height: '60px',
         gap: '0',
         flexDirection: 'row',

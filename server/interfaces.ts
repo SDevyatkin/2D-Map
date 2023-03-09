@@ -54,22 +54,31 @@ export interface UserSettings {
   markersData?: IMapMetaData[];
 }
 
+export interface IRoute {
+  object: number;
+  color: string;
+}
+
 export interface IRoutes {
   [key: number]: number[][];
 }
 
 export interface IRoutesByMap {
   [key: string]: {
-    id: number,
-    color: string,
-  }[];
+    [key: string]: {
+      object: number,
+      color: string,
+    }[];
+  };
 }
 
 export interface IDistancesByMap {
   [key: string]: {
-    distance: string;
-    color: string;
-  }[];
+    [key: string]: {
+      distance: string;
+      color: string;
+    }[];
+  };
 }
 
 export interface IWidgets {

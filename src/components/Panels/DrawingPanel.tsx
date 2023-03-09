@@ -1,8 +1,9 @@
 import { ChangeEvent, FC, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+// import { saveSessionSettings } from '../../api';
 import { selectDrawingMode } from '../../store/drawingSettingsSlice';
 import { DrawingMode, setDrawingMode } from '../../store/sidebarSlice';
-import { RootState } from '../../store/store';
+import { RootState, store } from '../../store/store';
 import Select from '../Select';
 
 const DrawingPanel: FC = () => {
@@ -24,6 +25,9 @@ const DrawingPanel: FC = () => {
       mode: event.target.value as DrawingMode,
     }));
     Map.changeInteractions(event.target.value);
+
+    // const state = store.getState();
+    // saveSessionSettings(state.widgetSettings.widgetsLayout, state.sidebar);
   };
 
   const drawLine = () => Map.drawLine();

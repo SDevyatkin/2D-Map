@@ -1,5 +1,6 @@
 import { ChangeEvent, FC, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { deleteInfoModals, saveInfoModal } from '../../api';
 import { InfoModalPlacement, setFeatureInfoID, setInfoModalSettings } from '../../store/sidebarSlice';
 import { RootState } from '../../store/store';
 import Select from '../Select';
@@ -54,6 +55,7 @@ const InfoModalPanel: FC = () => {
   const addInfoModal = () => {
     if (object === 'None') return;
     
+    console.log(placement);
     if (placement === 'fixed') {
       dispatch(setFeatureInfoID({
         map: MapID,
@@ -62,6 +64,8 @@ const InfoModalPanel: FC = () => {
     } else if (placement === 'binded') {
       Map.addInfoModal(object);
     }
+
+    saveInfoModal(`map${MapID}`, object, placement);
   };
 
   const clearInfoModals = () => {
@@ -73,8 +77,9 @@ const InfoModalPanel: FC = () => {
     } else if (placement === 'binded') {
       Map.clearInfoModals();
     }
+    deleteInfoModals(`map${MapID}`);
   };
-
+;
   return (
     <div id='info-modal-panel' className='sidebar-panel' style={{ top: '350px' }}>
       <h2>Вывод информации</h2>

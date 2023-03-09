@@ -244,6 +244,12 @@ input {
   font-weight: 300;
 }
 
+.sidebar-panel .widget-layout-icon {
+  width: 35px;
+  height: 35px;
+  border-radius: 3px;
+}
+
 .selector, .color-input {
   position: relative;
   display: flex;
@@ -321,6 +327,40 @@ input {
   flex-wrap: wrap;
 }
 
+.error-log {
+  display: flex;
+  gap: 5px;
+  flex-direction: column;
+  overflow-y: hidden !important;
+}
+
+.error-messages {
+  width: 100%;
+  overflow-y: auto;
+  padding: 0 5px;
+}
+
+.error-message {
+  color: #FFF;
+  width: 100%;
+  border-bottom: 1px solid #FFF;
+  margin-bottom: 25px;
+}
+
+.error-message h4 {
+  margin: 0;
+}
+
+.error-message span {
+  display: block;
+}
+
+.error-message-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .sidebar-btn {
   width: auto;
   padding: 3px 6px;
@@ -393,6 +433,12 @@ input {
   overflow-y: scroll;
   overflow-x: hidden;
   z-index: 4;
+}
+
+.modal-heading {
+  color: #FFF;
+  font-size: 18px;
+  font-weight: bold;
 }
 
 .modal-tabbar {
@@ -468,18 +514,21 @@ input {
 }
 
 .sidebar::-webkit-scrollbar,
-.modal::-webkit-scrollbar {
+.modal::-webkit-scrollbar,
+.error-messages::-webkit-scrollbar {
   width: 10px;
 }
 
 .sidebar::-webkit-scrollbar-track,
-.modal::-webkit-scrollbar-track {
+.modal::-webkit-scrollbar-track,
+.error-messages::-webkit-scrollbar-track {
   background: #F1F1F1;
   border-radius: 5px;
 }
 
 .sidebar::-webkit-scrollbar-thumb,
-.modal::-webkit-scrollbar-thumb {
+.modal::-webkit-scrollbar-thumb,
+.error-messages::-webkit-scrollbar-thumb {
   background: #888;
   border-radius: 5px;
 }
@@ -633,10 +682,15 @@ input {
   right: 10px;
   width: 200px;
   height: auto;
-  padding: 30px 10px;
+  padding: 15px 6px;
   background-color: rgba(70, 70, 75, 0.8);
   border-radius: 5px;
   user-select: none;
+}
+
+.feature-info-modal .close-btn {
+  top: 0px;
+  right: 0px;
 }
 
 .new-sidebar {

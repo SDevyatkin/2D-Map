@@ -12,11 +12,14 @@ import routes from '../assets/sidebar/routes.png';
 import view from '../assets/sidebar/view.png';
 import info from '../assets/sidebar/info.png';
 import settings from '../assets/sidebar/settings.png';
+import widgets from '../assets/win4.svg';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
 import ModalOverlay from './Modals/ModalOverlay';
 import CommonModal from './Modals/CommonModal';
 import InfoModalPanel from './Panels/InfoModalPanel';
+import WidgetsLayoutPanel from './Panels/WidgetsLayoutPanel';
+import CommonTooltip from '../CommonTooltip';
 
 interface SidebarProps {
   opened: boolean;
@@ -33,6 +36,7 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
   const [distancePanel, setDistancePanel] = useState<boolean>(false);
   const [routePanel, setRoutePanel] = useState<boolean>(false);
   const [infoModalPanel, setInfoModalPanel] = useState<boolean>(false);
+  const [widgetsLayoutPanel, setWidgetsLayoutPanel] = useState<boolean>(false);
   const [commonModal, setCommonModal] = useState<boolean>(false);
 
   const handleMapSelectPanel = () => {
@@ -42,6 +46,7 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
     setInfoModalPanel(false);
     setCommonModal(false);
     setDrawingPanel(false);
+    setWidgetsLayoutPanel(false);
     setMapSelectPanel(state => !state);
   };
 
@@ -56,6 +61,7 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
     setRoutePanel(false);
     setInfoModalPanel(false);
     setCommonModal(false);
+    setWidgetsLayoutPanel(false);
     setDrawingPanel(state => !state);
   };
 
@@ -66,6 +72,7 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
     setRoutePanel(false);
     setInfoModalPanel(false);
     setCommonModal(false);
+    setWidgetsLayoutPanel(false);
     setViewSettingsPanel(state => !state);
   };
 
@@ -76,6 +83,7 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
     setRoutePanel(false);
     setInfoModalPanel(false);
     setCommonModal(false);
+    setWidgetsLayoutPanel(false);
     setDistancePanel(state => !state);
   };
 
@@ -86,6 +94,7 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
     setDistancePanel(false);
     setInfoModalPanel(false);
     setCommonModal(false);
+    setWidgetsLayoutPanel(false);
     setRoutePanel(state => !state);
   };
 
@@ -96,7 +105,19 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
     setDistancePanel(false);
     setCommonModal(false);
     setRoutePanel(false);
+    setWidgetsLayoutPanel(false);
     setInfoModalPanel(state => !state);
+  };
+
+  const handleWidgetsLayoutPanel = () => {
+    setMapSelectPanel(false);
+    setDrawingPanel(false);
+    setViewSettingsPanel(false);
+    setDistancePanel(false);
+    setRoutePanel(false);
+    setInfoModalPanel(false);
+    setCommonModal(false);
+    setWidgetsLayoutPanel(state => !state);
   };
 
   const handleCommonModal = () => {
@@ -106,6 +127,7 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
     setDistancePanel(false);
     setRoutePanel(false);
     setInfoModalPanel(false);
+    setWidgetsLayoutPanel(false);
     setCommonModal(state => !state);
   };
 
@@ -121,29 +143,64 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
         <DistancePanel />
         <RoutesPanel /> */}
         <div className='sidebar-menu'>
-          <button className={`menu-btn${mapSelectPanel ? ' menu-btn-active' : ''}`} onClick={handleMapSelectPanel}>
-            { selectedMap }
-          </button>
-          <button className={`menu-btn${drawingPanel ? ' menu-btn-active' : ''}`} onClick={handleDrawingPanel}>
-            <img src={drawing} draggable={false} />
-          </button>
-          <button className={`menu-btn${viewSettingsPanel ? ' menu-btn-active' : ''}`} onClick={handleViewSettingsPanel}>
-            <img src={view} draggable={false} />
-          </button>
-          <button className={`menu-btn${distancePanel ? ' menu-btn-active' : ''}`} onClick={handleDistancePanel}>
-            <img src={distance} draggable={false} />
-          </button>
-          <button className={`menu-btn${routePanel ? ' menu-btn-active' : ''}`} onClick={handleRoutePanel}>
-            <img src={routes} draggable={false} />
-          </button>
-          <button className={`menu-btn${infoModalPanel ? ' menu-btn-active' : ''}`} onClick={handleInfoModal}>
-            <img src={info} draggable={false} />
-          </button>
+          <CommonTooltip
+            title='Инструмент для выбора настраиваемого виджета.'
+          >
+            <button className={`menu-btn${mapSelectPanel ? ' menu-btn-active' : ''}`} onClick={handleMapSelectPanel}>
+              { selectedMap }
+            </button>
+          </CommonTooltip> 
+          <CommonTooltip
+            title='Инструмент для выбора режима редактирования.'
+          >
+            <button className={`menu-btn${drawingPanel ? ' menu-btn-active' : ''}`} onClick={handleDrawingPanel}>
+              <img src={drawing} draggable={false} />
+            </button>
+          </CommonTooltip>
+          <CommonTooltip
+            title='Инструмент для настройки вида карты.'
+          > 
+            <button className={`menu-btn${viewSettingsPanel ? ' menu-btn-active' : ''}`} onClick={handleViewSettingsPanel}>
+              <img src={view} draggable={false} />
+            </button>
+          </CommonTooltip>
+          <CommonTooltip
+            title='Инструмент для оценки расстояния между двумя объектами.'
+          >
+            <button className={`menu-btn${distancePanel ? ' menu-btn-active' : ''}`} onClick={handleDistancePanel}>
+              <img src={distance} draggable={false} />
+            </button>
+          </CommonTooltip>
+          <CommonTooltip
+            title='Инструмент для отрисовки пройденного объктом пути.'
+          >
+            <button className={`menu-btn${routePanel ? ' menu-btn-active' : ''}`} onClick={handleRoutePanel}>
+              <img src={routes} draggable={false} />
+            </button>
+          </CommonTooltip>
+          <CommonTooltip
+            title='Инструмент для вывода информации об объекте.'
+          >
+            <button className={`menu-btn${infoModalPanel ? ' menu-btn-active' : ''}`} onClick={handleInfoModal}>
+              <img src={info} draggable={false} />
+            </button>
+          </CommonTooltip>
         </div>
         <div className='sidebar-menu'>
-          <button className={`menu-btn${commonModal ? ' menu-btn-active' : ''}`} onClick={handleCommonModal}>
-            <img src={settings} draggable={false} /> 
-          </button>
+          <CommonTooltip
+            title='Инструмент для управления расположением виджетов.'
+          >
+            <button className={`menu-btn${widgetsLayoutPanel ? ' menu-btn-active' : ''}`} onClick={handleWidgetsLayoutPanel}>
+              <img src={widgets} style={{width: '35px', height: '35px', borderRadius: '3px'}} draggable={false} />
+            </button>
+          </CommonTooltip>
+          <CommonTooltip
+            title='Модальное окно с инструментами для всего приложения: создание пользовательской иконки и задание стилей для объектов на карте.'
+          >
+            <button className={`menu-btn${commonModal ? ' menu-btn-active' : ''}`} onClick={handleCommonModal}>
+              <img src={settings} draggable={false} /> 
+            </button>
+          </CommonTooltip>
         </div>
       </div>
   
@@ -153,6 +210,7 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
       { (distancePanel && opened) && <DistancePanel /> }
       { (routePanel && opened) && <RoutesPanel /> }
       { (infoModalPanel && opened) && <InfoModalPanel /> }
+      { (widgetsLayoutPanel && opened) && <WidgetsLayoutPanel onClose={handleWidgetsLayoutPanel} /> }
       { (commonModal && opened) && <CommonModal handleClose={handleCommonModal} /> }
     </>
     , document.getElementById('root') as HTMLDivElement

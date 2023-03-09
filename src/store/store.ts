@@ -8,6 +8,7 @@ import mapReducer from './mapSlice';
 import featuresDataSlice from './featuresDataSlice';
 import sidebarReducer from './sidebarSlice';
 import widgetSettingsReducer from './widgetSettingsSlice';
+import errorLogReducer from './errorLogSlice';
 
 export const reducer = combineReducers({
   Map: mapReducer,
@@ -18,6 +19,7 @@ export const reducer = combineReducers({
   featuresData: featuresDataSlice,
   sidebar: sidebarReducer,
   widgetSettings: widgetSettingsReducer,
+  errorLog: errorLogReducer,
 });
 
 export const store = configureStore({

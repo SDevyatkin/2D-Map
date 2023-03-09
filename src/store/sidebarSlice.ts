@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { saveSessionSidebarSettings } from '../api';
 
 export type ObjectType = number | 'None';
 
@@ -97,35 +98,48 @@ export const sidebarSlice = createSlice({
         },
         featureInfoID: -1,
       };
+      // saveSessionSidebarSettings(state);
     },
 
     setDrawingMode: (state, action: PayloadAction<{map: number, mode: DrawingMode}>) => {
       state[action.payload.map].drawingMode = action.payload.mode;
+      saveSessionSidebarSettings(state);
     },
 
     setViewSettings: (state, action: PayloadAction<{map: number, settings: IViewSettings}>) => {
       state[action.payload.map].viewSettings = action.payload.settings;
+      saveSessionSidebarSettings(state);
     },
 
     setDistanceSettings: (state, action: PayloadAction<{map: number, settings: IDistanceSettings}>) => {
       state[action.payload.map].distanceSettings = action.payload.settings;
+      saveSessionSidebarSettings(state);
     },
 
     setRouteSettings: (state, action: PayloadAction<{map: number, settings: IRouteSettings}>) => {
       state[action.payload.map].routeSettings = action.payload.settings;
+      saveSessionSidebarSettings(state);
     },
 
     setInfoModalSettings: (state, action: PayloadAction<{map: number, settings: IInfoModalSettings}>) => {
       state[action.payload.map].infoModalSettings = action.payload.settings;
+      saveSessionSidebarSettings(state);
     },
 
     setFeatureInfoID: (state, action: PayloadAction<{map: number, id: number}>) => {
       state[action.payload.map].featureInfoID = action.payload.id;
+      saveSessionSidebarSettings(state);
+    },
+
+    setSidebarSettings: (state, action: PayloadAction<SidebarState>) => {
+      for (let id in action.payload) {
+        state[Number(id)] = action.payload[id];
+      }
     },
   },
 });
 
 export const { addNewMap, setDrawingMode, setViewSettings, setDistanceSettings, 
-  setRouteSettings, setFeatureInfoID, setInfoModalSettings } = sidebarSlice.actions;
+  setRouteSettings, setFeatureInfoID, setInfoModalSettings, setSidebarSettings } = sidebarSlice.actions;
 
 export default sidebarSlice.reducer;

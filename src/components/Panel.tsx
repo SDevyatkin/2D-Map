@@ -6,6 +6,13 @@ import win4 from '../assets/win4.svg';
 import ModelCreation from './Modals/ModelCreation';
 import ModelSetting from './Modals/ModelSetting';
 import WidgetSettings from './Modals/WidgetSettings';
+import CommonTooltip from '../CommonTooltip';
+import noWarning from '../assets/no-warning.svg'; 
+import warnings from '../assets/warnings.svg';
+import { useDispatch, useSelector } from 'react-redux';
+import { setOpened } from '../store/errorLogSlice';
+import { RootState } from '../store/store';
+import ErrorLog from './Modals/ErrorLog';
 
 interface PanelProps {
   handleSidebar: (event: MouseEvent) => void;
@@ -13,9 +20,16 @@ interface PanelProps {
 
 const Panel: FC<PanelProps> = ({ handleSidebar }) => {
 
+  const dispatch = useDispatch();
+
   const [iconCreationMode, setIconCreationMode] = useState<boolean>(false);
   const [typeSettingsMode, setTypeSettingsMode] = useState<boolean>(false);
   const [widgetSettingsMode, setWidgetSettingsMode] = useState<boolean>(false);
+  
+  const { errorLogOpened, signaling } = useSelector((state: RootState) => ({ 
+    errorLogOpened: state.errorLog.opened,
+    signaling: state.errorLog.signaling,
+  }))
   // const [freqChangingMode, setFreqChangingMode] = useState<boolean>(false);
 
   const handleIconCreationMode = () => {
@@ -38,6 +52,11 @@ const Panel: FC<PanelProps> = ({ handleSidebar }) => {
     setWidgetSettingsMode(state => !state);
   };
 
+  const handleErrorLogModal = () => {
+    console.log(errorLogOpened);
+    dispatch(setOpened(!errorLogOpened));
+  };
+
   // const handleFreqChangingMode = () => {
   //   setTypeSettingsMode(false);
   //   setIconCreationMode(false);
@@ -51,13 +70,17 @@ const Panel: FC<PanelProps> = ({ handleSidebar }) => {
   return (
     <>
       <div className='header'>
+      <CommonTooltip
+        title='Открыть/закрыть боковое меню.'
+      >
         <button onClick={handleSidebar}>
           <img src={menu} />
         </button>
+      </CommonTooltip>
         <img className='logo' src={logo} />
         <div className='header-btns'>
-          <button onClick={handleWidgetMode}>
-            <img src={win4} width={27} height={24} style={{ borderRadius: '3px' }} />
+          <button onClick={handleErrorLogModal}>
+            <img src={signaling ? warnings : noWarning} width={34} height={34} style={{ borderRadius: '3px' }} />
           </button>
           {/* <button className='primary-btn' onClick={handleFreqChangingMode}>обновлений/сек</button> */}
           {/* <button className='primary-btn' onClick={handleIconCreationMode}>создание иконки</button>
@@ -66,7 +89,8 @@ const Panel: FC<PanelProps> = ({ handleSidebar }) => {
       </div>
       {/* { iconCreationMode && <ModelCreation handleClose={offIconCreationMode} /> }
       { typeSettingsMode && <ModelSetting handleClose={offTypeSettingsMode} /> } */}
-      { widgetSettingsMode && <WidgetSettings handleClose={offWidgetSettingsMode} /> }
+      {/* { widgetSettingsMode && <WidgetSettings handleClose={offWidgetSettingsMode} /> } */}
+      { errorLogOpened && <ErrorLog handleClose={handleErrorLogModal} /> }
     </>
   );
 };

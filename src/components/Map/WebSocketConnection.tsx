@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { testConnection } from '../../api';
 import { setFeaturesData } from '../../store/featuresDataSlice';
 import { changePinObjects } from '../../store/pinObjectsSlice';
-import { RootState } from '../../store/store';
+import { RootState, store } from '../../store/store';
 import { IRoutes } from '../../wsTypes';
 
 const WebSocketConnection: FC = () => {
@@ -47,8 +47,10 @@ const WebSocketConnection: FC = () => {
       const features = data.features;
       const idsByAltitude = data.idsByAltitude;
       const routes = data.routes;
-      const routesByMap = data.routesByMap;
-      const distancesByMap = data.distancesByMap;
+
+      const cookie = document.cookie.split('=')[1];
+      const routesByMap = data.routesByMap[cookie] ? data.routesByMap[cookie] : {};
+      const distancesByMap = data.distancesByMap[cookie] ? data.distancesByMap[cookie] : {};
   
       dispatch(changePinObjects(Object.keys(features).map(id => Number(id)).filter(id => features[id].parentID !== 'death')));
       dispatch(setFeaturesData(features));
@@ -58,11 +60,12 @@ const WebSocketConnection: FC = () => {
 
         const mapID = Map.getDivID();
         const filteredRoutes: IRoutes = {};
+        // console.log(routesByMap);
         if (routesByMap.hasOwnProperty(mapID)) {
           // console.log(routesByMap[mapID]);
           routesByMap[mapID].map((route: any) => {
-            filteredRoutes[route.id] = {
-              route: routes[route.id],
+            filteredRoutes[route.object] = {
+              route: routes[route.object],
               color: route.color,
             };
           });
@@ -70,7 +73,6 @@ const WebSocketConnection: FC = () => {
         // console.log(filteredRoutes);
         Map.drawRoutes(filteredRoutes);
 
-        // console.log(distancesByMap);
         if (distancesByMap.hasOwnProperty(mapID)) {
           distancesByMap[mapID].map((dist: any) => {
             const [first, second] = dist.distance.split('_distance_').map((obj: any) => Number(obj));
@@ -83,8 +85,21 @@ const WebSocketConnection: FC = () => {
 
     ws.addEventListener('message', wsOnMessage);
 
+    const wsOnClose = (event: CloseEvent) => {
+      // const state = store.getState();
+
+      // saveSessionSettings(state.sidebar);
+      // ws.send(JSON.stringify({
+      //   widgetsLayout: store.getState().widgetSettings.widgetsLayout,
+      //   ...store.getState().sidebar,
+      // }));
+    };
+
+    ws.addEventListener('close', wsOnClose);
+
     return () => {
       ws.removeEventListener('message', wsOnMessage);
+      ws.removeEventListener('close', wsOnClose);
     };
   }, [Maps]);
 

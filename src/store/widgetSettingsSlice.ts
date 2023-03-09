@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Extent } from 'ol/extent';
+import { saveWidgetsLayout } from '../api';
 
 export type WidgetsLayout = '1' | '2v' | '2h' | '3t' | '3b' | '3l' | '3r' | '4';
 
@@ -18,6 +19,7 @@ export const WidgetSettingsSlice = createSlice({
   reducers: {
     setLayout: (state, action: PayloadAction<WidgetsLayout>) => {
       state.widgetsLayout = action.payload;
+      saveWidgetsLayout(action.payload);
     },
   },
 });

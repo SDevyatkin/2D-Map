@@ -5,6 +5,7 @@ import { DetectPolygonManager } from '../../DetectPolygonManager';
 import { ModalProps } from './modal.interface';
 import ModalOverlay from './ModalOverlay';
 import close from '../../assets/close.png';
+import CommonTooltip from '../../CommonTooltip';
 
 const ModelCreation: FC = () => {
 
@@ -56,21 +57,33 @@ const ModelCreation: FC = () => {
         <canvas id='polygonManager' width={900} height={700} />
         <div className='canvas-settings'>
           <div className='canvas-slider'>
-            <input type='range' id='gridStep' name='volume' min={10} max={80} value={pixelWidth} step={10} onChange={handleRange} />
+            <CommonTooltip
+              title='Размер клетки поля в пикселях'
+            >
+              <input type='range' id='gridStep' name='volume' min={10} max={80} value={pixelWidth} step={10} onChange={handleRange} />
+            </CommonTooltip>
             <span>Ширина клетки в пикселях {pixelWidth}</span>
           </div>
           <div className='canvas-slider'>
-            <Tooltip
+            <CommonTooltip
               title='Количество метров содержащихся в одной клетке поля.'
             >
               <input type='range' id='meterSize' name='meterSize' min={1} max={1000} value={meterWidth} step={1} onChange={handleRange} />
-            </Tooltip>
+            </CommonTooltip>
             <span>Ширина клетки в метрах {meterWidth}</span>
           </div>
           <div className='canvas-create'>
             <span>Имя модели</span>
-            <input type='text' value={modelName} onChange={handleModelName} />
-            <button className='primary-btn sidebar-btn' onClick={saveModel} disabled={!modelName}>Сохранить</button>
+            <CommonTooltip
+              title='Поле для ввода имени создаваемой иконки.'
+            >
+              <input type='text' value={modelName} onChange={handleModelName} />
+            </CommonTooltip>
+            <CommonTooltip
+              title='Сохранить иконку.'
+            >
+              <button className='primary-btn sidebar-btn' onClick={saveModel} disabled={!modelName}>Сохранить</button>
+            </CommonTooltip>
           </div>
         </div>
       </>

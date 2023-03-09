@@ -3,6 +3,7 @@ import ModalOverlay from './ModalOverlay';
 import ModelCreation from './ModelCreation';
 import ModelSetting from './ModelSetting';
 import close from '../../assets/close.png';
+import CommonTooltip from '../../CommonTooltip';
 
 interface Props {
   handleClose: () => void;
@@ -23,8 +24,16 @@ const CommonModal: FC<Props> = ({ handleClose }) => {
     <ModalOverlay handleClose={handleClose}>
       <div className='modal' onClick={stopPropagation}>
         <div className='modal-tabbar'>
-          <button style={ currentModal === 'model-creation' ? { borderBottom: '1px solid #FFF' } : {}} onClick={handleModelCreation}>СОЗДАНИЕ ИКОНКИ</button>
-          <button style={ currentModal === 'model-settings' ? { borderBottom: '1px solid #FFF' } : {}} onClick={handleModelSettings}>СООТНОШЕНИЕ ТИПОВ</button>
+          <CommonTooltip
+            title='Инструмент для создания пользовательской иконки, отображающейся с реальными размерами на карте.'
+          >
+            <button style={ currentModal === 'model-creation' ? { borderBottom: '1px solid #FFF' } : {}} onClick={handleModelCreation}>СОЗДАНИЕ ИКОНКИ</button>
+          </CommonTooltip>
+          <CommonTooltip
+            title='Инструмент установки стилей для объектов определённого типа, отображающихся на карте.'
+          >
+            <button style={ currentModal === 'model-settings' ? { borderBottom: '1px solid #FFF' } : {}} onClick={handleModelSettings}>СООТНОШЕНИЕ ТИПОВ</button>
+          </CommonTooltip>
         </div>
         <button className='primary-btn close-btn' onClick={handleClose}>
           <img src={close} width={22} height={22} />

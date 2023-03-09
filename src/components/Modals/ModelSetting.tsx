@@ -8,6 +8,7 @@ import { changeImage, changeMarkerSettings, changeModel, changeOpacity, changeSi
 import TableRow from './TableRow';
 import close from '../../assets/close.png';
 import { BASE_URL } from '../../api';
+import CommonTooltip from '../../CommonTooltip';
 
 const ModelSetting: FC = () => {
 
@@ -53,24 +54,50 @@ const ModelSetting: FC = () => {
         </div>
         <div className='settings-item'>
           <span>Тип:</span>
-          <Select value={type} data={Array.from({length: 200}, (_, i) => i + 200)} noneField='' onChange={handleTypeChange} /> 
+          <CommonTooltip
+            title='Каждый объект на карте относится к определённому типу, т.е. установленные стили блудут применены ко всем объектам с этим типом.'
+          >
+            <div>
+              <Select value={type} data={Array.from({length: 200}, (_, i) => i + 200)} noneField='' onChange={handleTypeChange} /> 
+            </div>
+          </CommonTooltip>
         </div>
         <div className='settings-item'>
           <span>Изображение:</span>
-          <Select value={image} data={imageNames} noneField='' onChange={handleImageChange} />
+          <CommonTooltip
+            title='Изображение, которым будут обозначаться объекты на карте.'
+          >
+            <div>
+              <Select value={image} data={imageNames} noneField='' onChange={handleImageChange} />
+            </div>
+          </CommonTooltip>
         </div>
         <img src={`${BASE_URL}/public/images/${image}`} width={50} height={50} />
         <div className='settings-item'>
           <span>Размер:</span>
-          <input type='number' value={size} step={0.05} onChange={handleSizeChange} />
+          <CommonTooltip
+            title='Размер отображаемого на карте изображения.'
+          >
+            <input type='number' value={size} step={0.05} onChange={handleSizeChange} />
+          </CommonTooltip>
         </div>
         <div className='settings-item'>
           <span>Прозрачность:</span>
-          <input type='number' value={opacity} step={0.1} onChange={handleOpacityChange} />
+          <CommonTooltip
+            title='Степень прозрачности выбранного изображения (1 - полностью прозрачное, 0 - полностью не прозрачное).'
+          >
+            <input type='number' value={opacity} step={0.1} onChange={handleOpacityChange} />
+          </CommonTooltip>
         </div>
         <div className='settings-item'>
           <span>Модель:</span>
-          <Select value={model} data={polygonModelNames} noneField='Нет' onChange={handleModelChange} />
+          <CommonTooltip
+            title='Пользовательская иконка, отображающаяся с реальными размерами на карте.'
+          >
+            <div>
+              <Select value={model} data={polygonModelNames} noneField='Нет' onChange={handleModelChange} />
+            </div>
+          </CommonTooltip>
         </div>
         <button className='primary-btn sidebar-btn' onClick={saveModelSettings}>Сохранить модель</button>
       </>

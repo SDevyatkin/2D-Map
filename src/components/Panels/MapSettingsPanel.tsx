@@ -1,5 +1,6 @@
 import { ChangeEvent, FC, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import CommonTooltip from '../../CommonTooltip';
 import { selectPinObject } from '../../store/pinObjectsSlice';
 import { setViewSettings } from '../../store/sidebarSlice';
 import { RootState } from '../../store/store';
@@ -136,23 +137,47 @@ const MapSettingsPanel: FC = () => {
       <h2>Вид карты</h2>
       <div className='selector'>
         <span>Центрирование</span>
-        <Select value={pinObject} data={pinObjects} noneField='Свободно' onChange={handlePinObjectChange} />
+        <CommonTooltip
+            title='Свободное перемещение или выбор объкта, на котором отцентрируется карта.'
+        >
+          <div>
+            <Select value={pinObject} data={pinObjects} noneField='Свободно' onChange={handlePinObjectChange} />
+          </div>
+        </CommonTooltip> 
       </div>
       <div className='selector'>
         <span>Масштаб</span>
-        <Select data={Array.from({length: 30}, (_, i) => i + 1)} value={zoomLevel} noneField='' onChange={handleZoomLevelChange} />
+        <CommonTooltip
+            title='Уровень приближения карты.'
+        >
+          <div>
+            <Select data={Array.from({length: 30}, (_, i) => i + 1)} value={zoomLevel} noneField='' onChange={handleZoomLevelChange} />
+          </div>
+        </CommonTooltip> 
       </div>
       <div className='selector'>
         <span>Поворот</span>
-        <input type='number' value={rotation} max={180} min={-180} step={1} onChange={handleRotationChange} />
+        <CommonTooltip
+            title='Угол поворота карты в градусах.'
+        >
+          <input type='number' value={rotation} max={180} min={-180} step={1} onChange={handleRotationChange} />
+        </CommonTooltip> 
       </div>
       <div className='selector'>
         <span>Шаг сетки (км)</span>
-        <input type='number' value={gridStep} step={1} min={0} onChange={handleGridStep} />
+        <CommonTooltip
+            title='Шаг координатной сетки в км.'
+        >
+          <input type='number' value={gridStep} step={1} min={0} onChange={handleGridStep} />
+        </CommonTooltip> 
       </div>
       <div className='panel-checkbox '>
         <label htmlFor='lock-view'>Блокировать вид</label>
-        <input id='lock-view' type='checkbox' checked={lockedView} onChange={handleLockedView} />
+        <CommonTooltip
+            title='Блокировать вид на выбранном, в поле "Центрирование", объекте, с фиксированным уровнем приближения, заданным в поле "Масштаб".'
+        >
+          <input id='lock-view' type='checkbox' checked={lockedView} onChange={handleLockedView} />
+        </CommonTooltip> 
       </div>
       {/* <div className='buttons'>
         <button className='primary-btn sidebar-btn'>сохранить</button>
