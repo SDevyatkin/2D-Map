@@ -18,7 +18,7 @@ import Icon from 'ol/style/Icon';
 import Stroke from 'ol/style/Stroke';
 import Style, { StyleLike } from 'ol/style/Style';
 import Text from 'ol/style/Text';
-import { BASE_URL, getMarkerSettings, getPolygonIcons, getRoutes } from '../../api';
+import { BASE_URL, getMarkerSettings, getPolygonIcons, getRoutes, saveInfoModal } from '../../api';
 import { IMarkerSettings } from '../../store/modelSettingsSlice';
 import { GreatCircle } from 'arc';
 import { FullScreen, MousePosition, Rotate, ScaleLine, Zoom, ZoomSlider, ZoomToExtent } from 'ol/control';
@@ -535,8 +535,10 @@ class MapCanvas {
 
       dispatch(setFeatureInfoID({
         map: Number(divID.slice(3)), 
-        id: Number(featureID),
+        id: featureID,
       }));
+
+      saveInfoModal(this.divID, featureID, 'fixed');
     });
 
     popupBindInfoButton.addEventListener('click', (event) => {
@@ -545,6 +547,8 @@ class MapCanvas {
       const featureID = Number((event.currentTarget as HTMLButtonElement).dataset.featureID);
 
       this.featureBindedInfoIds.push(featureID);
+
+      saveInfoModal(this.divID, featureID, 'binded');
     });
 
     this.map.on('pointerdrag', (event) => {

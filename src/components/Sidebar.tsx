@@ -1,4 +1,4 @@
-import { FC, MouseEvent, useState } from 'react';
+import { FC, MouseEvent, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import DistancePanel from './Panels/DistancePanel';
 import DrawingPanel from './Panels/DrawingPanel';
@@ -13,13 +13,14 @@ import view from '../assets/sidebar/view.png';
 import info from '../assets/sidebar/info.png';
 import settings from '../assets/sidebar/settings.png';
 import widgets from '../assets/win4.svg';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store/store';
 import ModalOverlay from './Modals/ModalOverlay';
 import CommonModal from './Modals/CommonModal';
 import InfoModalPanel from './Panels/InfoModalPanel';
 import WidgetsLayoutPanel from './Panels/WidgetsLayoutPanel';
 import CommonTooltip from '../CommonTooltip';
+import { setOpened } from '../store/errorLogSlice';
 
 interface SidebarProps {
   opened: boolean;
@@ -28,7 +29,16 @@ interface SidebarProps {
 
 const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
 
-  const selectedMap = useSelector((state: RootState) => state.Map.selectedMap);
+  const dispatch = useDispatch();
+
+  const { selectedMap, errorLogOpened } = useSelector((state: RootState) => ({
+    selectedMap: state.Map.selectedMap,
+    errorLogOpened: state.errorLog.opened,
+  }));
+
+  useEffect(() => {
+    errorLogOpened && setCommonModal(false);
+  }, [errorLogOpened]);
 
   const [mapSelectPanel, setMapSelectPanel] = useState<boolean>(false);
   const [drawingPanel, setDrawingPanel] = useState<boolean>(false);
@@ -129,6 +139,8 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
     setInfoModalPanel(false);
     setWidgetsLayoutPanel(false);
     setCommonModal(state => !state);
+
+    dispatch(setOpened(false));
   };
 
   return createPortal(

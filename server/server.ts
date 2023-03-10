@@ -504,8 +504,9 @@ app.post('/InfoModal', (request: express.Request, response: express.Response) =>
       mapInfoModals.binded.push(object);
     }
 
-    sessionSettings[userId][id].infoModals = mapInfoModals;
+    sessionSettings[userId][mapID].infoModals = mapInfoModals;
 
+    // console.log(sessionSettings[userId][]);
     writeFileSync('./JSON/SessionSettings.json', JSON.stringify(sessionSettings));
 
   } catch (err) {
