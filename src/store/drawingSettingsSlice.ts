@@ -13,6 +13,8 @@ export const initialState: DrawingSettingsState = {
     'Polygon': 'Зона',
     'Circle': 'Окружность',
     'Point': 'Точка',
+    'Ruler': 'Линейка',
+    'BoxSelection': 'Выделить область'
   },
   selected: 'None',
 };

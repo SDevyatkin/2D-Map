@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { deleteInfoModals, saveInfoModal } from '../../api';
 import { InfoModalPlacement, setFeatureInfoID, setInfoModalSettings } from '../../store/sidebarSlice';
 import { RootState } from '../../store/store';
+import { InstrumentsButton } from '../../StyledButton';
 import Select from '../Select';
 
 const placementValues: { [key: string]: InfoModalPlacement } = {
@@ -62,6 +63,7 @@ const InfoModalPanel: FC = () => {
         id: object,
       }));
     } else if (placement === 'binded') {
+      
       Map.addInfoModal(object);
     }
 
@@ -92,8 +94,8 @@ const InfoModalPanel: FC = () => {
         <Select data={Object.keys(placementValues)} value={placementValue} noneField={''} onChange={handlePlacement} />
       </div>
       <div className='buttons'>
-        <button className='primary-btn sidebar-btn' disabled={buttonDisabled} onClick={addInfoModal}>построить</button>
-        <button className='primaty-btn sidebar-btn' onClick={clearInfoModals}>очистить</button>
+        <InstrumentsButton disabled={buttonDisabled} onClick={addInfoModal}>построить</InstrumentsButton>
+        <InstrumentsButton onClick={clearInfoModals}>очистить</InstrumentsButton>
       </div>
     </div>
   );

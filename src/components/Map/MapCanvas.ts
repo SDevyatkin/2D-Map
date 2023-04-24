@@ -3,14 +3,14 @@ import { Coordinate, createStringXY, rotate} from 'ol/coordinate';
 import GeoJSON from 'ol/format/GeoJSON';
 import { buffer, containsExtent, createOrUpdateFromCoordinate, equals, extend, Extent, getCenter, getRotatedViewport, getSize, getTopRight } from 'ol/extent';
 import { LineString, MultiLineString, Point, Polygon } from 'ol/geom';
-import { Type } from 'ol/geom/Geometry';
-import Draw from 'ol/interaction/Draw';
+import Geometry, { Type } from 'ol/geom/Geometry';
+import Draw, { DrawEvent } from 'ol/interaction/Draw';
 import Modify from 'ol/interaction/Modify';
 import Snap from 'ol/interaction/Snap';
 import TileLayer from 'ol/layer/Tile';
 import VectorLayer from 'ol/layer/Vector';
 import { fromLonLat, toLonLat, transform } from 'ol/proj';
-import { OSM, XYZ } from 'ol/source';
+import { BingMaps, OSM, XYZ } from 'ol/source';
 import VectorSource from 'ol/source/Vector';
 import CircleStyle from 'ol/style/Circle';
 import Fill from 'ol/style/Fill';
@@ -18,7 +18,7 @@ import Icon from 'ol/style/Icon';
 import Stroke from 'ol/style/Stroke';
 import Style, { StyleLike } from 'ol/style/Style';
 import Text from 'ol/style/Text';
-import { BASE_URL, getMarkerSettings, getPolygonIcons, getRoutes, saveInfoModal } from '../../api';
+import { BASE_URL, getMarkerSettings, getPolygonIcons, getRoutes, saveInfoModal, testConnection } from '../../api';
 import { IMarkerSettings } from '../../store/modelSettingsSlice';
 import { GreatCircle } from 'arc';
 import { FullScreen, MousePosition, Rotate, ScaleLine, Zoom, ZoomSlider, ZoomToExtent } from 'ol/control';
@@ -29,18 +29,20 @@ import { Dispatch } from '@reduxjs/toolkit';
 import { setFeatureInfoID } from '../../store/sidebarSlice';
 import { MapExtent, setExtents, setUserExtentColorPicker } from '../../store/mapSlice';
 import { fromExtent } from 'ol/geom/Polygon';
-import { DragAndDrop, DragBox, DragPan, DragRotate, Extent as ExtentInteraction, PinchRotate, PinchZoom, Pointer } from 'ol/interaction';
+import { defaults, DoubleClickZoom, DragAndDrop, DragBox, DragPan, DragRotate, Extent as ExtentInteraction, PinchRotate, PinchZoom, Pointer } from 'ol/interaction';
 import { shiftKeyOnly } from 'ol/events/condition';
 import { v4 } from 'uuid';
 import { DragBoxEvent } from 'ol/interaction/DragBox';
 import PointerInteraction from 'ol/interaction/Pointer';
-import { BBox, center, centerOfMass, geometry, greatCircle, polygon, squareGrid } from '@turf/turf';
+import { BBox, center, centerOfMass, distance, geometry, greatCircle, polygon, squareGrid } from '@turf/turf';
 import rectangleGrid from '@turf/rectangle-grid';
 import { Pixel } from 'ol/pixel';
 import { store } from '../../store/store';
 import { WidgetsLayout } from '../../store/widgetSettingsSlice';
 import { asString } from 'ol/color';
 import { pushError } from '../../store/errorLogSlice';
+import { InteractionOptions } from 'ol/interaction/Interaction';
+import { DefaultsOptions } from 'ol/interaction/defaults';
 
 type mapObjectType = {
   id: number;
@@ -163,14 +165,17 @@ class MapCanvas {
   private widgetsLayout: WidgetsLayout = store.getState().widgetSettings.widgetsLayout;
   private leftPosition: number = 0;
   private topPosition: number = 0;
+  private rulerDistLineIds: string[] = [];
+  private doubleClickZoomInteraction = new DoubleClickZoom({ duration: 500 });
+  private dragPanActive: boolean = true;
   private draw: Draw = new Draw({
     source: this.DrawLayerSource,
     type: 'LineString',
     freehand: true,
   });
-  private snap: Snap = new Snap({
-    source: this.DrawLayerSource,
-  });
+  // private snap: Snap = new Snap({
+  //   source: this.DrawLayerSource,
+  // });
 
   constructor(divID: string, dispatch: Dispatch) {
     this.map = this.createMap(divID);
@@ -220,7 +225,7 @@ class MapCanvas {
         }),
       }),
     }));
-    this.map.addInteraction(this.DrawModifier);
+    // this.map.addInteraction(this.DrawModifier);
     // this.ObjectsLayer.setStyle((feature) => this.styles[feature.get('type')]);
 
     this.map.addLayer(this.DistanceLayer);
@@ -278,9 +283,6 @@ class MapCanvas {
 
     // this.map.addInteraction(extentInteraction);
 
-    this.map.addInteraction(new PinchRotate());
-    this.map.addInteraction(new PinchZoom());
-
     class SelectionPointerInteraction extends Pointer {
       private instance: MapCanvas;
 
@@ -290,7 +292,11 @@ class MapCanvas {
       }
 
       public handleDownEvent(event: MapBrowserEvent<any>) {
-        if (!event.originalEvent.shiftKey || event.originalEvent.altKey) return false;
+        
+        if (
+          ((!event.originalEvent.shiftKey || event.originalEvent.altKey) && this.instance.dragPanActive) || 
+          (event.originalEvent.altKey && !this.instance.dragPanActive)
+        ) return false;
 
         this.instance.currentUserExtentStart = event.coordinate;
         this.instance.currentUserExtentEnd = event.coordinate;
@@ -348,7 +354,6 @@ class MapCanvas {
 
     this.map.on('pointermove', (event) => {
       if (event.dragging || event.originalEvent.srcElement.localName !== 'canvas') {
-
         pointerInteraction.handleMoveEvent(event);
       }
     });
@@ -416,6 +421,12 @@ class MapCanvas {
     const dragRotate = new DragRotate();
 
     this.map.addInteraction(dragRotate);
+
+    this.map.addInteraction(new PinchRotate());
+    this.map.addInteraction(new PinchZoom());
+
+    this.doubleClickZoomInteraction.setActive(false);
+    this.map.addInteraction(this.doubleClickZoomInteraction);
     // this.map.on('pointerdrag', (event) => {
     //   console.log(event.originalEvent);
     // });
@@ -463,6 +474,7 @@ class MapCanvas {
       const mapsCount = Number(this.widgetsLayout.slice(0, 1));
       const extentId = popupFitExtentButton.dataset.extentId as string;
 
+      popupFitExtentMapSelection.innerHTML = '';
       for (let i = 0; i < mapsCount; i++) {
         popupFitExtentMapSelection.style.display = 'block';
 
@@ -579,11 +591,17 @@ class MapCanvas {
 
       popupClickOnExtent.style.display = 'none';
       
-      if (!feature) return;
+      if (!feature) {
+        const popups = document.querySelectorAll('.popup');
+        popups.forEach(popup => {
+          (popup as HTMLDivElement).style.display = 'none'
+        });
+        return;
+      }
 
       const featureID = feature.getId()?.toString() as string;
 
-      if (featureID.startsWith('UserExtent')) {
+      if (featureID && featureID.startsWith('UserExtent')) {
         popupFitExtentButton.dataset.extentId = featureID;
         popupDeleteButton.dataset.extentId = featureID;
         popupColorPickerButton.dataset.extentId = featureID;
@@ -591,7 +609,7 @@ class MapCanvas {
         popupClickOnExtent.style.left = `${event.pixel[0] - 45}px`;
         popupClickOnExtent.style.top = `${event.pixel[1] + 20}px`;
         popupClickOnExtent.style.display = 'block';
-      } else {
+      } else if (featureID && !featureID.startsWith('RulerPoint') && !featureID.startsWith('RulerLine')) {
         popupBindInfoButton.dataset.featureID = featureID;
         popupFixedInfoButton.dataset.featureID = featureID;
 
@@ -600,6 +618,42 @@ class MapCanvas {
         popupClickOnFeature.style.display = `block`;
       }
         // this.featureInfoID = feature.getId() as number;
+    });
+
+    this.map.on('dblclick', (event) => {
+      const feature = this.map.forEachFeatureAtPixel(event.pixel, (f) => f);
+
+      console.log(this.doubleClickZoomInteraction.getActive());
+      if (feature && feature.getId()?.toString().startsWith('RulerPoint')) {
+        this.doubleClickZoomInteraction.setActive(false);
+
+        const id = feature.getId()?.toString().split('_')[1];
+        const index = this.rulerDistLineIds.findIndex(item => item === `RulerPoint_${id}`);
+        this.rulerDistLineIds.splice(index, 1);
+
+        const features = this.DrawLayerSource
+          .getFeatures()
+          .filter(f => {
+            const ids = f.getId()?.toString().split('_') as string[];
+
+            console.log(this.rulerDistLineIds.length);
+            if (this.rulerDistLineIds.length === 1) return true;
+
+            if (id === ids[1] || id === ids[2]) {
+
+              return true;
+            } else {
+              return false;
+            }
+          });
+
+          this.drawRulerLine(index - 1, index);
+        // console.log(features);
+        features.forEach((f) => this.DrawLayerSource.removeFeature(f));
+        // this.DrawLayerSource.removeFeature(feature as Feature);
+      }
+
+      this.doubleClickZoomInteraction.setActive(false);
     });
 
     const popupOnHover = document.createElement('div');
@@ -654,8 +708,10 @@ class MapCanvas {
     // });
 
     // const graticule = new Graticule({
-    //   step
+    //   ste
     // })
+
+    // const bm = BingMaps()
 
     // for (let x = extent[0]; x < extent[2]; x += step) {
     //   const feature = new Feature({});
@@ -700,44 +756,35 @@ class MapCanvas {
       }),
     }));
 
-    // const DUMMY_EXTENT = [-179, -86, 179, 86] as BBox;
-    // const DUMMY_EXTENT = [-180, -84.83, -170, -75] as BBox;
-    // const cellSide = 100;
-    // const grid = squareGrid(DUMMY_EXTENT, cellSide, { units: 'kilometers' });
-    // console.log(grid);
 
-    // const gridFeatureCollection = squareGrid(DUMMY_EXTENT, cellSide, {});
-    // console.log(gridFeatureCollection);
-    // const gridFeatures: Feature[] = [];
-
-    // gridFeatureCollection.features.forEach(f => {
-    //   // @ts-ignore
-    //   const coords = [f.geometry.coordinates[0].map(coord => fromLonLat([coord[0], coord[1]]) as Coordinate)];
-    //   const geometry = new Polygon(coords);
-    //   const feature = new Feature({});
-
-    //   feature.setGeometry(geometry);
-    //   feature.setStyle(new Style({
-    //     stroke: new Stroke({
-    //       width: 3,
-    //       color: '#00FF00',
-          
-    //     }),
-    //     fill: new Fill({
-    //       color: 'rgba(255, 0, 0, 0.6)'
-    //     }),
-    //   }));
-    //   gridFeatures.push(feature);
+    // const graticule = new Graticule({
+    //   // targetSize: 50,
+    //   visible: true,
+    //   extent: [-9 * 10 ** 10, -9 * 10 ** 10, 9 * 10 ** 10, 9 * 10 ** 10],
+    //   maxLines: 20000,
+    //   intervals: [10, 10],
+    //   showLabels: true,
+    //   lonLabelFormatter: (lon) => {
+    //     return String((lon * 111.124861111).toFixed(2));
+    //   },  
+    //   latLabelFormatter: (lat) => {
+    //     return String((lat * 111.321377778).toFixed(2));
+    //   },
     // });
 
-    // gridFeatures.forEach(f => this.MetricGridLayerSource.addFeature(f));
 
-    // console.log(this.MetricGridLayerSource.getFeatures());
-    // console.log(gridFeature);
-    // this.GridLayerSource.addFeatures(gridFeatures);
+
+    // graticule.setMap(this.map)
 
     this.map.getView().on('propertychange', () => {
+      // graticule.setT
+      // console.log(this.map.getView().getZoom());
       // this.currentExtent = this.map.getView().calculateExtent(this.map.getSize());
+      // const scaleLine = document.querySelector('.ol-scale-line');
+      // if (scaleLine && divID === 'map1') {
+      //   console.log(scaleLine.clientWidth, Number(scaleLine.textContent?.slice(0, 2)));
+      // }
+
       this.currentZoom = this.map.getView().getZoom() as number;
       const tempExtent = this.getCurrentExtent();
       this.currentExtent = tempExtent.map(point => [point[0] * 0.95, point[1] * 0.95] as Coordinate);
@@ -814,7 +861,13 @@ class MapCanvas {
       target: mousePositionElement,
     }));
 
-    this.map.addControl(new ScaleLine());
+    const scaleLine = new ScaleLine();
+
+    // scaleLine.addChangeListener('propertychange', (event) => {
+    //   console.log(event)
+    // });
+
+    this.map.addControl(scaleLine);
 
     this.map.addControl(new Zoom());
 
@@ -869,7 +922,19 @@ class MapCanvas {
         ctx.drawLineString(new LineString([[i, ymin], [i, ymax]]));
       }
 
+      if (divID === 'map2') {
+        const el = document.getElementById('map2')?.querySelector('.ol-scale-line');
+        const km = Number(el?.textContent?.slice(0, el.textContent.length - 3));
+        const width = el?.clientWidth as number;
+        // console.log((width / km) * this.gridStep);
+      }
+
       for (let i = startY; i <= endY; i += unitSplit) {
+        // console.log(
+        //   distance(
+
+        //   )
+        // );
         ctx.drawLineString(new LineString([[xmin, i], [xmax, i]]));
       }
 
@@ -933,7 +998,7 @@ class MapCanvas {
 
   public changeInteractions(mode: string) {
     this.map.removeInteraction(this.draw);
-    this.map.removeInteraction(this.snap);
+    // this.map.removeInteraction(this.snap);
 
     this.addInteractions(mode);
   }
@@ -1348,6 +1413,9 @@ class MapCanvas {
   }
 
   public clearDistanceLayer() {
+    // this.distances = this.distances.filter(d => !(d[0] === obj1 && d[1] === obj2))
+    // console.log(this.distances, obj1, obj2);
+    this.distances = [];
     this.DistanceLayerSource.clear();
   }
 
@@ -1373,7 +1441,7 @@ class MapCanvas {
   }
 
   public translateView(id: number | 'None') {
-    if (id === 'None') return;
+    if (id === 'None' || !this.FeaturesObject[id]) return;
 
     const coords = [this.FeaturesObject[id].featureParams.longitude, this.FeaturesObject[id].featureParams.latitude];
 
@@ -1700,20 +1768,64 @@ class MapCanvas {
   }
 
   private addInteractions(mode: string) {
-    if (mode !== 'None') {
+    this.handleBoxSelectionInteractions(true);
+    this.dragPanActive = true;
+
+    if (mode !== 'None' && mode !== 'BoxSelection') {
+      
+      const initMode = mode;
+      mode = mode === 'Ruler' ? 'Point' : mode;
+
       this.draw = new Draw({
         source: this.DrawLayerSource,
         type: mode as Type,
         freehand: true,
       });
 
-      this.snap = new Snap({
-        source: this.DrawLayerSource,
+      this.draw.on('drawend', (event) => {
+        const feature = event.feature;
+        const id = `RulerPoint_${v4()}`
+
+        feature.setId(id);
+        this.rulerDistLineIds.push(id);
+        feature.setProperties({
+          coordinates: toLonLat(event.target.sketchCoords_),
+        });
+
+        this.DrawLayerSource.addFeature(feature);
+
+        this.drawRulerLine();
       });
 
       this.map.addInteraction(this.draw);
-      this.map.addInteraction(this.snap);
+
+      if (initMode !== 'Ruler') { 
+        // this.snap = new Snap({
+        //   source: this.DrawLayerSource,
+        // });
+
+        // this.map.addInteraction(this.snap);
+      }
+
+      // this.snap.setActive(false);
+    } else if (mode === 'BoxSelection') {
+      this.handleBoxSelectionInteractions(false);
+      this.dragPanActive = false;
+      // console.log(this.map.getInteractions());
     }
+  }
+
+  private handleBoxSelectionInteractions(active: boolean) {
+
+    this.map.getInteractions().forEach((interaction) => {
+      if (
+        interaction instanceof DragPan || 
+        interaction instanceof PinchRotate ||
+        interaction instanceof PinchZoom
+      ) {
+        interaction.setActive(active);
+      }
+    });
   }
 
   private createMap(divID: string) {
@@ -1736,11 +1848,95 @@ class MapCanvas {
       }),
       controls: [],
       maxTilesLoading: 64,
+      interactions: defaults(<DefaultsOptions>{
+        doubleClickZoom: false,
+      }),
     });
   }
 
+  private drawRulerLine(idx1?: number, idx2?: number) {
+    
+    const features = this.DrawLayerSource.getFeatures().filter((f) => String(f.getId()).startsWith('RulerPoint'));
+    const featuresLen = this.rulerDistLineIds.length;
+
+    if (featuresLen < 2) return;
+    
+    let coord1;
+    let coord2;
+
+    if (idx1 && idx2) {
+      coord1 = (features.find(f => String(f.getId()).endsWith(this.rulerDistLineIds[idx1])) as Feature).getProperties().coordinates;
+      coord2 = (features.find(f => String(f.getId()).endsWith(this.rulerDistLineIds[idx2])) as Feature).getProperties().coordinates;
+    } else {
+      coord1 = (features.find(f => String(f.getId()).endsWith(this.rulerDistLineIds[featuresLen - 1])) as Feature).getProperties().coordinates;
+      coord2 = (features.find(f => String(f.getId()).endsWith(this.rulerDistLineIds[featuresLen - 2])) as Feature).getProperties().coordinates;
+    }
+
+      const dist = distance(coord1, coord2);
+
+      const distLine = greatCircle(coord1, coord2);
+      
+      let distFeature: Feature;
+
+      switch (distLine.geometry.type) {
+        case 'LineString':
+          distFeature = new Feature({
+            geometry: new LineString(distLine.geometry.coordinates.map(c => fromLonLat(c as Coordinate))),
+          });
+          break;
+        case 'MultiLineString':
+          distFeature = new Feature({
+            geometry: new MultiLineString(distLine.geometry.coordinates.map(item => item.map(c => fromLonLat(c as Coordinate)))),
+          });
+          break;
+      }
+
+      distFeature.setProperties({
+        distance: dist,
+      });
+
+      distFeature.setStyle(new Style({
+        stroke: new Stroke({
+          color: '#000',
+          width: 3,
+        }),
+        text: new Text({
+          text: `${dist.toFixed(3)} км`,
+          font: 'lighter 14px Arial',
+          offsetY: -15,
+          padding: [3, 10, 3, 10],
+          textAlign: 'center',
+          stroke: new Stroke({
+            width: 1,
+            color: '#FFF',
+          }),
+          fill: new Fill({
+            color: '#FFF',
+          }),
+          backgroundFill: new Fill({
+            color: 'rgba(0, 0, 0, 0.6)',
+            // color: 'rgba(102, 103, 108, 0.6)',
+          }),
+
+        }),
+      }));
+
+      distFeature.setId(`RulerLine_${this.rulerDistLineIds[featuresLen - 1].split('_')[1]}_${this.rulerDistLineIds[featuresLen - 2].split('_')[1]}`);
+
+      this.DrawLayerSource.addFeature(distFeature);
+      // this.DistanceLayerSource.addFeatures(new GeoJSON().readFeatures(line));
+  }
+
   private async getMarkerSettings() {
+    const res = await testConnection();
+
+    if (res !== 200) {
+      this.getMarkerSettings();
+      return;
+    }
+
     this.MarkersObject = await getMarkerSettings();
+    // console.log(this.MarkersObject);
   }
 
   public async updateFeaturesData(features: IFeatures, idsByAltitude: number[]) {
@@ -1847,7 +2043,7 @@ class MapCanvas {
               `,
               textAlign: 'start',
               justify: 'left',
-              padding: [0, 5, 0, 5],
+              padding: [0, 10, 0, 15],
               offsetX: 30,
               offsetY: -100,
             }),
@@ -1991,10 +2187,16 @@ class MapCanvas {
 
       try {
 
+        // console.log(this.MarkersObject[featureParams.type]);
         if (this.MarkersObject[featureParams.type].polygonModel !== '-' && featureParams.parentID === 0) {
 
-          if (!this.PolygonsLayerSource.getFeatureById(featureParams.id)) {;
+          if (!this.PolygonsLayerSource.getFeatureById(featureParams.id)) {
             const polygon = new Polygon([polygons[this.MarkersObject[featureParams.type].polygonModel]]);
+
+            // const center = getCenter(polygon.getExtent());
+            // console.log(polygons[this.MarkersObject[featureParams.type].polygonModel]);
+            // console.log(center);
+            // console.log(polygon);
 
             const polygonFeature = new Feature({
               name: featureParams.id,
@@ -2003,13 +2205,17 @@ class MapCanvas {
 
             polygonFeature.setId(featureParams.id);
 
+            const color = this.MarkersObject[featureParams.type].modelColor!;
+            // console.log(this.MarkersObject[featureParams.type].modelStroke);
             polygonFeature.setStyle(new Style({
               stroke: new Stroke({
-                color: 'black',
+                color: color.length < 8 ? color : color.slice(0, -2),
                 width: 3,
+                lineDash: this.MarkersObject[featureParams.type].modelStroke !== 'Сплошная' ? [30] : undefined,
+                lineDashOffset: 30,
               }),
               fill: new Fill({
-                color: 'rgba(0, 0, 0, 0.1)',
+                color: color,
               }),
             }));
 
@@ -2041,7 +2247,8 @@ class MapCanvas {
     const feature = this.PolygonsObject[id].feature;
 
     const geometry = feature.getGeometry() as Polygon;
-    const center = [geometry.getFlatCoordinates()[0], geometry.getFlatCoordinates()[1]];
+    const center = getCenter(geometry.getExtent());
+    // const center = [geometry.getFlatCoordinates()[0], geometry.getFlatCoordinates()[1]];
     
     const tx = fromLonLat([lon, lat])[0] - center[0];
     const ty = fromLonLat([lon, lat])[1] - center[1];
@@ -2055,13 +2262,13 @@ class MapCanvas {
     const geometry = feature.getGeometry();
 
     const angle = - (yaw - this.PolygonsObject[id].yawOld);
-    geometry?.rotate(angle / 57.2958, [0, 0]);
+    geometry?.rotate(angle / 57.2958, getCenter(geometry.getExtent()));
     this.PolygonsObject[id].yawOld = yaw;
   }
 
 
   private setViewCenter() {
-    if (this.centeredObject !== 'None') {
+    if (this.centeredObject !== 'None' && this.FeaturesObject[this.centeredObject]) {
       const coords = [
         this.FeaturesObject[this.centeredObject].featureParams.longitude,
         this.FeaturesObject[this.centeredObject].featureParams.latitude,

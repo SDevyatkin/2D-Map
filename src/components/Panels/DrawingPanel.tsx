@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { selectDrawingMode } from '../../store/drawingSettingsSlice';
 import { DrawingMode, setDrawingMode } from '../../store/sidebarSlice';
 import { RootState, store } from '../../store/store';
+import { InstrumentsButton } from '../../StyledButton';
 import Select from '../Select';
 
 const DrawingPanel: FC = () => {
@@ -41,8 +42,8 @@ const DrawingPanel: FC = () => {
         <Select data={Object.entries(drawingModes)} value={drawingMode} noneField='Выкл' onChange={onChange} />
       </div>
       <div className='buttons'> 
-        <button className='primary-btn sidebar-btn' onClick={cleanDrawSource}>очистить</button>
-        <button className='primary-btn sidebar-btn' onClick={drawLine}>построить маршрут</button>
+        <InstrumentsButton onClick={cleanDrawSource}>очистить</InstrumentsButton>
+        <InstrumentsButton onClick={drawLine}>построить маршрут</InstrumentsButton>
       </div>
     </div>
   );

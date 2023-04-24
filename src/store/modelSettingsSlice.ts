@@ -9,6 +9,8 @@ export interface IMarkerSettings {
     size: number,
     alpha: number,
     polygonModel: string,
+    modelStroke?: string;
+    modelColor?: string;
   },
 }
 
@@ -18,6 +20,8 @@ export interface IMarkerSetting {
   size: number;
   opacity: number;
   model: string;
+  modelStroke?: string;
+  modelColor?: string;
 }
 
 export interface ModelSettingsState {
@@ -26,10 +30,14 @@ export interface ModelSettingsState {
   size: number;
   opacity: number;
   model: string;
+  modelStroke: StrokeType;
+  modelColor: string;
   imageNames: string[];
   polygonModels: polygonModelsType;
   markerSettings: IMarkerSettings;
 };
+
+export type StrokeType = 'Solid' | 'Dashed';
 
 export const initialState: ModelSettingsState = {
   type: 200,
@@ -37,6 +45,8 @@ export const initialState: ModelSettingsState = {
   size: 0.25,
   opacity: 1,
   model: '',
+  modelStroke: 'Solid',
+  modelColor: '#000',
   imageNames: [],
   polygonModels: {},
   markerSettings: {},
@@ -66,6 +76,14 @@ export const modelSettingsSlice = createSlice({
       state.model = action.payload;
     },
 
+    changeModelStroke: (state, action: PayloadAction<StrokeType>) => {
+      state.modelStroke = action.payload;
+    },
+
+    changeModelColor: (state, action: PayloadAction<string>) => {
+      state.modelColor = action.payload;
+    },
+
     changeImageNames: (state, action: PayloadAction<string[]>) => {
       state.imageNames = action.payload;
     },
@@ -79,12 +97,21 @@ export const modelSettingsSlice = createSlice({
     },
 
     changeMarkerSettings: (state, action: PayloadAction<IMarkerSetting>) => {
-      state.markerSettings[action.payload.type] = {
+      const isModel = !!action.payload.model;
+
+       const newSettings: any = {
         image: action.payload.image,
         size: action.payload.size,
         alpha: action.payload.opacity,
-        polygonModel: action.payload.model ? action.payload.model : '-',
+        polygonModel: isModel ? action.payload.model : '-',
       };
+
+      if (isModel) {
+        newSettings.modelStroke = action.payload.modelStroke;
+        newSettings.modelColor = action.payload.modelColor;
+      } 
+
+      state.markerSettings[action.payload.type] = newSettings;
 
       saveMarkerSettings(state.markerSettings);
     },
@@ -92,6 +119,7 @@ export const modelSettingsSlice = createSlice({
 });
 
 export const { changeType, changeImage, changeSize, changeOpacity, changeModel, 
-  changeImageNames, changePolygonModels, setMarkerSettings, changeMarkerSettings } = modelSettingsSlice.actions;
+  changeImageNames, changePolygonModels, setMarkerSettings, changeMarkerSettings,
+  changeModelStroke, changeModelColor } = modelSettingsSlice.actions;
 
 export default modelSettingsSlice.reducer;

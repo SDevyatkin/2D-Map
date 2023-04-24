@@ -21,6 +21,7 @@ import InfoModalPanel from './Panels/InfoModalPanel';
 import WidgetsLayoutPanel from './Panels/WidgetsLayoutPanel';
 import CommonTooltip from '../CommonTooltip';
 import { setOpened } from '../store/errorLogSlice';
+import { StyledButton } from '../StyledButton';
 
 interface SidebarProps {
   opened: boolean;
@@ -158,60 +159,87 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
           <CommonTooltip
             title='Инструмент для выбора настраиваемого виджета.'
           >
-            <button className={`menu-btn${mapSelectPanel ? ' menu-btn-active' : ''}`} onClick={handleMapSelectPanel}>
+            <StyledButton 
+              isactive={mapSelectPanel}
+              onClick={handleMapSelectPanel}
+            >
               { selectedMap }
-            </button>
+            </StyledButton>
+            {/* <button className={`menu-btn${mapSelectPanel ? ' menu-btn-active' : ''}`} onClick={handleMapSelectPanel}>
+              { selectedMap }
+            </button> */}
           </CommonTooltip> 
           <CommonTooltip
             title='Инструмент для выбора режима редактирования.'
           >
-            <button className={`menu-btn${drawingPanel ? ' menu-btn-active' : ''}`} onClick={handleDrawingPanel}>
+            <StyledButton 
+              isactive={drawingPanel}
+              onClick={handleDrawingPanel}
+            >
               <img src={drawing} draggable={false} />
-            </button>
+            </StyledButton>
           </CommonTooltip>
           <CommonTooltip
             title='Инструмент для настройки вида карты.'
           > 
-            <button className={`menu-btn${viewSettingsPanel ? ' menu-btn-active' : ''}`} onClick={handleViewSettingsPanel}>
+            <StyledButton 
+              isactive={viewSettingsPanel}
+              onClick={handleViewSettingsPanel}
+            >
               <img src={view} draggable={false} />
-            </button>
+            </StyledButton>
           </CommonTooltip>
           <CommonTooltip
             title='Инструмент для оценки расстояния между двумя объектами.'
           >
-            <button className={`menu-btn${distancePanel ? ' menu-btn-active' : ''}`} onClick={handleDistancePanel}>
+            <StyledButton 
+              isactive={distancePanel}
+              onClick={handleDistancePanel}
+            >
               <img src={distance} draggable={false} />
-            </button>
+            </StyledButton>
           </CommonTooltip>
           <CommonTooltip
             title='Инструмент для отрисовки пройденного объктом пути.'
           >
-            <button className={`menu-btn${routePanel ? ' menu-btn-active' : ''}`} onClick={handleRoutePanel}>
+            <StyledButton 
+              isactive={routePanel}
+              onClick={handleRoutePanel}
+            >
               <img src={routes} draggable={false} />
-            </button>
+            </StyledButton>
           </CommonTooltip>
           <CommonTooltip
             title='Инструмент для вывода информации об объекте.'
           >
-            <button className={`menu-btn${infoModalPanel ? ' menu-btn-active' : ''}`} onClick={handleInfoModal}>
+            <StyledButton 
+              isactive={infoModalPanel}
+              onClick={handleInfoModal}
+            >
               <img src={info} draggable={false} />
-            </button>
+            </StyledButton>
           </CommonTooltip>
         </div>
         <div className='sidebar-menu'>
           <CommonTooltip
             title='Инструмент для управления расположением виджетов.'
           >
-            <button className={`menu-btn${widgetsLayoutPanel ? ' menu-btn-active' : ''}`} onClick={handleWidgetsLayoutPanel}>
+            <StyledButton 
+              isactive={widgetsLayoutPanel}
+              onClick={handleWidgetsLayoutPanel}
+            >
               <img src={widgets} style={{width: '35px', height: '35px', borderRadius: '3px'}} draggable={false} />
-            </button>
+            </StyledButton>
           </CommonTooltip>
           <CommonTooltip
             title='Модальное окно с инструментами для всего приложения: создание пользовательской иконки и задание стилей для объектов на карте.'
           >
-            <button className={`menu-btn${commonModal ? ' menu-btn-active' : ''}`} onClick={handleCommonModal}>
+            <StyledButton 
+              isactive={commonModal}
+              onClick={handleCommonModal}
+            >
               <img src={settings} draggable={false} /> 
-            </button>
+            </StyledButton>
           </CommonTooltip>
         </div>
       </div>

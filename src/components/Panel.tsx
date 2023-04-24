@@ -13,6 +13,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setOpened } from '../store/errorLogSlice';
 import { RootState } from '../store/store';
 import ErrorLog from './Modals/ErrorLog';
+import { Button } from '@mui/material';
+import { StyledButton } from '../StyledButton';
 
 interface PanelProps {
   handleSidebar: (event: MouseEvent) => void;
@@ -73,15 +75,48 @@ const Panel: FC<PanelProps> = ({ handleSidebar }) => {
       <CommonTooltip
         title='Открыть/закрыть боковое меню.'
       >
-        <button onClick={handleSidebar}>
+        {/* <Button
+          sx={{
+            minWidth:'60px',
+            width: '60px',
+            height: '50px',
+            padding: 0,
+            borderRadius: 0,
+            // transition: '#46464B 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,border-color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            },
+            '&:active': {
+              backgroundColor: '#46464B',
+            },
+            '&:click': {
+              backgroundColor: '#46464B',
+            },
+          }}
+          onClick={handleSidebar}
+        >
           <img src={menu} />
-        </button>
+        </Button> */}
+        <StyledButton 
+          height={50}
+          imagesize={30}
+          onClick={handleSidebar}
+        >
+          <img src={menu} />
+        </StyledButton>
+        {/* <button onClick={handleSidebar}>
+          <img src={menu} />
+        </button> */}
       </CommonTooltip>
         <img className='logo' src={logo} />
         <div className='header-btns'>
-          <button onClick={handleErrorLogModal}>
+          <StyledButton 
+            height={50}
+            imagesize={34}
+            onClick={handleErrorLogModal}
+          >
             <img src={signaling ? warnings : noWarning} width={34} height={34} style={{ borderRadius: '3px' }} />
-          </button>
+          </StyledButton>
           {/* <button className='primary-btn' onClick={handleFreqChangingMode}>обновлений/сек</button> */}
           {/* <button className='primary-btn' onClick={handleIconCreationMode}>создание иконки</button>
           <button className='primary-btn' onClick={handleTypeSettingsMode}>соотношение типов</button> */}

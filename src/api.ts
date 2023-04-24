@@ -62,12 +62,14 @@ export const testConnection = async () => {
       document.cookie = `user=${v4()}; max-age=${3600 * 24 * 365}`;
     }
 
-    USER_ID =  document.cookie.split('=')[1];
+    USER_ID = document.cookie.split('=')[1];
 
     const response = await fetch(`${BASE_URL}/`, { mode: 'cors' });
     // console.log(response);
     return response.status;
   } catch (err) {
+    setBaseURL();
+
     const error = err as Error;
     store.dispatch(pushError(error));
     console.log(err);
@@ -104,7 +106,8 @@ export const getMapViewSettings = async () => {
 
   try {
     const response = await fetch(`${BASE_URL}/MapViewSettings`, { mode: 'cors' });
-    const mapSettings = response.json();
+    const mapSettings = await response.json();
+    console.log(mapSettings);
 
     return mapSettings;
   } catch (err) {
@@ -132,7 +135,7 @@ export const getPolygonIcons = async () => {
 
   try {
     const response = await fetch(`${BASE_URL}/PolygonIcons`, { mode: 'cors' });
-    const polygonIcons = response.json();
+    const polygonIcons = await response.json();
 
     return polygonIcons;
   } catch (err) {
@@ -157,6 +160,8 @@ export const getMarkerSettings = async () => {
           size: Number(markerSettings[key].size),
           alpha: Number(markerSettings[key].alpha),
           polygonModel: markerSettings[key].polygonModel,
+          modelStroke: markerSettings[key].modelStroke,
+          modelColor: markerSettings[key].modelColor,
         };
       });
 
@@ -190,7 +195,7 @@ export const getMarkerSettings = async () => {
 export const getDistance = async (first: number, second: number) => {
 
   try {
-    const response = await fetch(`${BASE_URL}/Distance${first}/${second}`, { mode: 'cors' });
+    const response = await fetch(`${BASE_URL}/Distance/${first}/${second}`, { mode: 'cors' });
     const distance = await response.json();
 
     return distance;
@@ -217,7 +222,6 @@ export const getRoute = async (object: number) => {
     // );
 
     const route = await response.json();
-
     return route;
   } catch (err) {
     const error = err as Error;
@@ -249,7 +253,10 @@ export const getSessionSettings = async () => {
     const response = await fetch(`${BASE_URL}/SessionSettings/${USER_ID}`, { mode: 'cors' });
 
     const sessionSettings: sessionSettingsType = await response.json();
-    store.dispatch(setLayout(sessionSettings.widgetsLayout));
+
+    if (!Object.keys(sessionSettings).length) return;
+
+    if (sessionSettings.widgetsLayout) store.dispatch(setLayout(sessionSettings.widgetsLayout));
 
     const sidebarSettings= sessionSettings.sidebarSettings;
     // for (let mapID in sessionSettings.sidebarSettings) {
@@ -257,7 +264,6 @@ export const getSessionSettings = async () => {
     // }
     store.dispatch(setSidebarSettings(sidebarSettings));
 
-    // console.log(sidebarSettings);
     for (let id in sidebarSettings) {
       const mapID = `map${id}`;
       const Map = store.getState().Map.maps[mapID];
@@ -276,7 +282,7 @@ export const getSessionSettings = async () => {
       Map.setRotation(Number(sidebarSettings[id].viewSettings.rotation));
       Map.setGridStep(Number(sidebarSettings[id].viewSettings.gridStep));
 
-      const mapSettings = sessionSettings[mapID];
+      const mapSettings = sessionSettings[id];
 
       // mapSettings.routes && mapSettings.routes.forEach(async (route) => {
       //   const routes = await getRoute(route.object);
@@ -323,14 +329,17 @@ export const getSessionSettings = async () => {
 export const saveDistance = async (mapID: string, first: number, second: number, color: string) => {
 
   try {
-    await fetch(`${BASE_URL}/Distance`, {
+    const response = await fetch(`${BASE_URL}/Distance`, {
       method: 'POST',
       mode: 'cors',
+      cache: 'no-cache',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ mapID, first, second, color, userId: USER_ID }),
     });
+
+    console.log(response);
   } catch (err) {
     const error = err as Error;
     store.dispatch(pushError(error));
@@ -340,7 +349,8 @@ export const saveDistance = async (mapID: string, first: number, second: number,
 
 export const clearDistances = async (mapID: string) => {
   try {
-    await fetch(`${BASE_URL}/clearDistance/${mapID}`, {
+    // console.log(mapID, USER_ID);
+    const response = await fetch(`${BASE_URL}/clearDistance/${mapID}`, {
       method: 'POST',
       mode: 'cors',
       headers: {
@@ -375,7 +385,7 @@ export const stopSendRoutes = async (mapID: number) => {
 
 export const pushRouteID = async (object: number, color: string, mapID: string) => {
   try {
-    await fetch(`${BASE_URL}/RouteID`, {
+    const response = await fetch(`${BASE_URL}/RouteID`, {
       method: 'POST',
       mode: 'cors',
       headers: {
@@ -383,6 +393,8 @@ export const pushRouteID = async (object: number, color: string, mapID: string) 
       },
       body: JSON.stringify({ object, color, mapID, userId: USER_ID }),
     });
+
+    console.log(response);
   } catch (err) {
     const error = err as Error;
     store.dispatch(pushError(error));
@@ -452,9 +464,15 @@ export const saveSessionSidebarSettings = async (sidebarSettings: SidebarState) 
   // const sidebarSettings = store.getState().sidebar;
 
   try {
-    const response = await fetch(`${BASE_URL}/SidebarSettings/:${USER_ID}`, {
+
+    // for (let key of Object.keys(sidebarSettings)) {
+    //   console.log(sidebarSettings[Number(key)]);
+    // } 
+
+    const response = await fetch(`${BASE_URL}/SidebarSettings/${USER_ID}`, {
       method: 'POST',
       mode: 'cors',
+      cache: 'no-cache',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -462,6 +480,8 @@ export const saveSessionSidebarSettings = async (sidebarSettings: SidebarState) 
         ...sidebarSettings,
       }),
     });
+
+    console.log(response);
   } catch (err) {
     const error = err as Error;
     store.dispatch(pushError(error));

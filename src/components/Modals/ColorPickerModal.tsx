@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUserExtentColorPicker } from '../../store/mapSlice';
 import { RootState } from '../../store/store';
+import { InstrumentsButton } from '../../StyledButton';
 
 interface Props {
   divID: string;
@@ -57,8 +58,8 @@ const ColorPickerModal: FC<Props> = ({ divID }) => {
             <HexColorInput color={color} onChange={handleColor} />
 
             <div className='buttons'>
-              <button className='primary-btn sidebar-btn' onClick={applyColor}>Применить</button>
-              <button className='primary-btn sidebar-btn' onClick={cancelColorPeak}>Отмена</button>
+              <InstrumentsButton onClick={applyColor}>Применить</InstrumentsButton>
+              <InstrumentsButton onClick={cancelColorPeak}>Отмена</InstrumentsButton>
             </div>
           </div>, document.getElementById(divID)?.querySelector('.ol-viewport') as HTMLDivElement)
       }

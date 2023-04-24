@@ -2,6 +2,7 @@ import { ChangeEvent, FC, MouseEvent, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectMap } from '../../store/mapSlice';
 import { RootState } from '../../store/store';
+import { StyledButton } from '../../StyledButton';
 import Select from '../Select';
 
 interface Props {
@@ -46,14 +47,13 @@ const MapSelectPanel: FC<Props> = ({ onClose }) => {
       </div> */}
       {
         maps.filter(m => Number(m) <= Number(widgetsLayout[0])).map(m => (
-          <button 
+          <StyledButton 
             key={m}
-            className={`menu-btn${m === selectedMap ? ' menu-btn-active' : ''}`} 
-            style={{ width: '60px' }}
+            isactive={m === selectedMap}
             onClick={handleMap}
           >
             { m }
-          </button>
+          </StyledButton>
         ))
       }
     </div>

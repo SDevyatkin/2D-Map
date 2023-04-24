@@ -1,0 +1,836 @@
+namespace MB.msg;
+
+
+/*
+    Взаимодействие происходит по принципу запрос ответ
+    Все ответы на запрос имеют в названии структуры приставку "_resp"
+*/
+
+
+
+/*
+ *
+ *    Запрос на присоединение к системе
+ *
+ */
+table join_system
+{
+
+    ///название программного модуля
+    module_name:string (required);
+
+    ///версия программного модуля (может быть пустой)
+    module_version:string;
+}
+///Ответ
+table join_system_resp
+{
+    ///Статус, true если нет ошибок
+    status:bool = true;
+
+    ///Необходимо восстановить состояние
+    need_restore_state:bool = false;
+
+    ///Некорректный запрос
+    incorrect_request:bool = false;
+
+    ///Внутрення ошибка ПМ Брокер сообщений, дальнейшая работа невозможна
+    internal_error:bool = false;
+
+    ///Модуль под таким именем уже присоединен
+    module_already_join:bool = false;
+}
+
+
+
+
+/*
+ *
+ * Запрос на выход из системы
+ *
+ */
+table quit_from_system{
+    ///Всегда true
+    quit:bool = true;
+}
+
+table quit_from_system_resp{
+    ///Статус, true если нет ошибок
+    status:bool = true;
+
+    ///Некорректный запрос
+    incorrect_request:bool = false;
+
+    ///Внутрення ошибка ПМ Брокер сообщений, дальнейшая работа невозможна
+    internal_error:bool = false;
+}
+
+
+
+enum sync_mode :byte {
+    ///Асинхронный режим работы
+    async =0,
+
+    /// Режим временного регулирования
+    time_regulation,
+
+    ///Режим временного сдерживания
+    time_constrained
+}
+
+/*
+ *
+ *  Запрос на установление режима синхронизации в котором будет работать подключенный ПМ
+ *
+ */
+table choose_sync_mode{
+    //Режим синхронизации в котором собирается работать, подключаемый ПМ
+    mode:sync_mode;
+
+    //Шаг продвижения логического времени с которым собирается работать, подключаемый ПМ.
+    //Если продвигать логическое время с отличным от этого шага, то время не будет продвинуто
+    dt:float;
+
+    //Начальное логическое время ПМ
+    start_time:float;
+}
+
+
+///Ответ
+table choose_sync_mode_resp{
+    ///Статус, true если нет ошибок
+    status:bool = true;
+
+    ///Некорректный запрос
+    incorrect_request:bool= false;
+
+    ///Внутрення ошибка ПМ Брокер сообщений, дальнейшая работа невозможна
+    internal_error:bool= false;
+
+    ///Некорректный шаг продвижения по логическому времени
+    incorrect_dt:bool= false;
+}
+
+
+
+enum field_type : byte{
+    INT,
+    UINT,
+    FLOAT,
+    DOUBLE,
+    BOOL
+}
+
+
+
+/*
+ *
+ *  Запрос о намерении публиковать структуру данных
+ *
+ */
+table publish_struct_info
+{
+    ///Название структуры
+    name:string;
+
+    ///Описание полей структуры
+    fields:[field_info];
+}
+table field_info
+{
+    ///Название поля структуры
+    name:string;
+
+    ///Тип поля структуры
+    type:field_type;
+
+    ///Единицы измерения поля структуры
+    units:string;
+
+    ///Количество элементов в поле структуры (в случае если поле структуры это массив)
+    number_of_elements:ushort = 1;
+}
+
+
+///Ответ
+table publish_struct_info_resp
+{
+    ///Статус, true если нет ошибок
+    status:bool= true;
+
+    ///Некорректный запрос
+    incorrect_request:bool= false;
+
+    ///Внутрення ошибка ПМ Брокер сообщений, дальнейшая работа невозможна
+    internal_error:bool= false;
+
+    ///Дескриптор структуры (необходим в дальнейшем для информационного обмена)
+    handles_struct:ubyte;
+
+    ///Массив дескрипторов поля структуры, порядковый номер дескриптора в массиве
+    /// соответсвует порядковому номеру названия поля, указанного в запросе
+    fields_handle:[ubyte];
+}
+
+
+
+
+ /*
+  *
+  * Запрос о снятии с публикации структуру данных (пока не реализовано, все публикации снимают при выходе из системы ПМ)
+  *
+  */
+table unpublish_struct
+{
+    name_struct:string;
+}
+table unpublish_struct_resp
+{
+    status:bool =true;
+    incorrect_request:bool =false;
+    internal_error:bool=false;
+}
+
+
+
+
+/*
+ *
+ * Запрос о намерении подписки на значения слеудющих стркутур
+ *
+ */
+table subscribe_struct_info
+{
+    ///Название структуры, данных которой необходимо получать
+    struct_name:string;
+
+    ///Название экземпляра структуры, данные которого необходимо получать
+    object_name:string;
+
+    ///Поля структуры, данные которых необходимо получать
+    fields:[string];
+}
+///Ответ
+table subscribe_struct_info_resp
+{
+    ///Статус, true если нет ошибок
+    status:bool = true;
+
+    ///Некорректный запрос
+    incorrect_request:bool = false;
+
+    ///Внутрення ошибка ПМ Брокер сообщений, дальнейшая работа невозможна
+    internal_error:bool= false;
+
+    ///Дескриптор структуры, которая была указана в запросе
+    struct_handle:ubyte;
+
+    ///Дескриптор экземпляра структуры, который был указан в запросе
+    object_handle:ubyte;
+
+    //Дескрипторы поля структуры, которые были перечислены в запросе, порядоковые номера совпадают
+    fields_handle:[ubyte];
+}
+
+
+
+
+/*
+ *
+ * Запрос на отписку тоесть прекращение получений значений
+ *
+ */
+table unsubscribe_struct
+{
+    ///Название структуры от которой нужно отписаться
+    struct_name:string;
+
+    ///Название экземпляра структуры от которого нужно отписаться
+    object_name:string;
+
+    ///Поля структуры от которых нужно отписаться
+    fields:[string];
+}
+///Ответ
+table unsubscribe_struct_resp
+{
+    ///Статус, true если нет ошибок
+    status:bool = true;
+
+    ///Некорректный запрос
+    incorrect_request:bool = false;
+
+    ///Внутрення ошибка ПМ Брокер сообщений, дальнейшая работа невозможна
+    internal_error:bool = false;
+}
+
+
+
+
+
+/*
+ *
+ * Запрос на продвижение логического времени
+ *
+ */
+table next_time{
+    ///Логическое время, до которого нужно продвинуться
+    ///логическое время нужно продвигать с шагом, указанным в структуре choose_sync_mode
+    new_time:double;
+}
+
+///Ответ на запрос о продвижении логического времени
+///Приходит когда глобальное логическое время продвинулось
+///Работа без получения данного ответа считается некорректной
+table next_time_resp{
+    ///статус, true если нет ошибок
+    status:bool = true;
+
+    /// некорректный запрос
+    incorrect_request:bool= false;
+
+    ///внутрення ошибка ПМ Брокер сообщений, дальнейшая работа невозможна
+    internal_error:bool= false;
+
+    ///Некорректный шаг продвижения времени
+    incorrect_dt:bool= false;
+
+    ///Некорректное логическое время
+    incorrect_time:bool= false;
+
+    ///ПМ работает не в синхронном режиме
+    module_not_sync:bool= false;
+}
+
+
+
+
+
+
+/*
+ *
+ * Запрос на создание экземпляра структуры
+ *
+ */
+table create_object{
+    ///Название структуры, экземпляр который нужно создать
+    name_struct:string;
+
+    ///Название экземпляра структуры
+    name_object:string;
+}
+///Ответ
+table create_object_resp{
+    ///Статус, true если нет ошибок
+    status:bool= true;
+
+    ///Некорректный запрос
+    incorrect_request:bool= false;
+
+    ///Внутрення ошибка ПМ Брокер сообщений, дальнейшая работа невозможна
+    internal_error:bool= false;
+
+    ///Неизвестная структуры (значит не поступал запрос о публикации структукры)
+    unknow_struct:bool= false;
+
+    ///Такое название экземпляра структуры уже используется
+    object_name_already_use:bool= false;
+
+    ///Дескриптор созданного объекта (считается невалидным если status == false)
+    object_handle:ubyte;
+}
+
+
+/*
+ *
+ * Запрос на удаление экземпляра структуры
+ *
+ */
+table delete_object{
+
+    ///Название структуры, экземпляр которого нужно удалить
+    name_struct:string;
+
+    //Название экземпляра структуры, который нужно удалить
+    name_object:string;
+}
+///Ответ
+table delete_object_resp{
+    ///статус, true если нет ошибок
+    status:bool= true;
+
+    ///Некорректный запрос
+    incorrect_request:bool= false;
+
+    ///Внутрення ошибка ПМ Брокер сообщений, дальнейшая работа невозможна
+    internal_error:bool= false;
+
+    ///Экземпляр структуры не существует
+    object_not_exists:bool= false;
+
+    ///Неизвестная структукра (значит не поступал запрос о публикации структукры)
+    unknow_struct:bool= false;
+}
+
+
+enum handle_type : byte {
+    struct_handle,
+    object_handle,
+    field_handle
+}
+
+
+
+/*
+ *
+ * Запрос на получение дескрипторов
+ *
+ */
+table request_handle
+{
+    ///Какого типа дескриптор нужно получить
+    need_handle:handle_type;
+
+    ///Название структуры для которой нужен дескриптор
+    struct_name:string (required);
+
+    ///Название объекта или поля структуры, дескриптор которого необходимо получить
+    obj_or_field_name:string;
+}
+///Ответ
+table request_handle_resp
+{
+    ///Статус, true если нет ошибок
+    status:bool= true;
+
+    ///Некорректный запрос
+    incorrect_request:bool= false;
+
+    ///Внутрення ошибка ПМ Брокер сообщений, дальнейшая работа невозможна
+    internal_error:bool= false;
+
+
+    ///Неизвестная структукра (значит не поступал запрос о публикации структукры)
+    unknow_struct:bool= false;
+
+    ///Экземпляр структуры не существует
+    unknow_object:bool= false;
+
+    ///Неизвестное поле структуры
+    unknow_field:bool= false;
+
+    ///Запрашиваемый дескриптор (дескриптор считается невалидным если status == false)
+    handle:ubyte;
+}
+
+
+enum type_status : byte{
+    get_last_status_message,
+    get_all_status_messages
+}
+
+/*
+ *
+ * Запрос на получение статуса подключенного ПМ
+ * Статусом является текстовоое сообщение о сосотояни ПМ
+ *
+ */
+table get_module_status{
+
+    ///Получить только последнее сообщение или все отправленные
+    type:type_status = get_last_status_message;
+
+    ///Название ПМ статус которого нужно получить
+    module_name:string (required);
+}
+
+///Ответ
+table get_module_status_resp{
+    ///статус, true если нет ошибок
+    status:bool= true;
+
+    /// некорректный запрос
+    incorrect_request:bool= false;
+
+    ///внутрення ошибка ПМ Брокер сообщений, дальнейшая работа невозможна
+    internal_error:bool= false;
+
+    ///Статусные сообщения у данного ПМ отсутсвуют
+    status_message_empty:bool= false;
+
+    ///ПМ не найден в системе
+    module_not_found:bool= false;
+
+    ///Название ПМ, которому принадлежат статусные сообщения
+    module_name:string;
+
+    ///Статусные сообщения
+    message:[string];
+}
+
+
+
+/*
+ *
+ * Отправка данных в систему
+ *
+ */
+table update_attrubutes{
+    ///Дескриптор структуры, экземпляр которой указан ниже
+    struct_handle:ubyte;
+
+    //Дескриптор экземпляра структуры, которому принадлежат данные структуры
+    object_handle:ubyte;
+
+    ///Временная метка логического времени, (-1, если ПМ не работает с логическим временем)
+    time_stamp:double=-1;
+
+    ///Значения данных структуры
+    ///Представляют из себя flexbuffer Vector в формате:
+    ///
+    ///index: 0   [дескриптор поля 1 структуры (всегда uint8)]
+    ///index: 1   [значение поля 1 (тип зависит от структуры)]
+    ///......
+    ///......
+    ///index: N   [дескриптор поля N структуры (всегда uint8)]
+    ///index: N+1 [значение поля N (тип зависит от структуры)]
+    values:[ubyte] (flexbuffer);
+}
+
+///Ответ отправляется только в случае ошибки
+table update_attrubutes_resp{
+    ///Статус, true если нет ошибок
+    status:bool= true;
+
+    ///Некорректный запрос
+    incorrect_request:bool = false;
+
+    ///Внутрення ошибка ПМ Брокер сообщений, дальнейшая работа невозможна
+    internal_error:bool= false;
+
+    ///Неизвестная стркутура данных  (значит не поступал запрос о публикации структукры)
+    unknow_struct:bool= false;
+
+    ///Неизвестный экземпляр структуры, значит он еще не создан
+    unknow_object:bool= false;
+
+    ///Неизвестное поле структуры
+    unknow_field:bool= false;
+
+    ///Невалидный дескриптор, который был указан в запросе
+    bad_handle:ubyte;
+}
+
+
+
+/*
+ *
+ * Отправляется подключенному программному модулю в случае поступления новых данных, на которые подписан ПМ
+ *
+ */
+table reflect_attributes{
+    ///Дескриптор структуры экземпляр, которой указан ниже
+    struct_handle:ubyte;
+
+    ///Дескриптор экземпляра сруктуры
+    object_handle:ubyte;
+
+    ///Логически-временная метка данных
+    time_stamp:double=-1;
+
+    ///Значения данных структуры
+    ///Представляют из себя flexbuffer Vector в формате:
+    ///
+    ///index: 0   [дескриптор поля 1 структуры (всегда uint8)]
+    ///index: 1   [значение поля 1 (тип зависит от структуры)]
+    ///......
+    ///......
+    ///index: N   [дескриптор поля N структуры (всегда uint8)]
+    ///index: N+1 [значение поля N (тип зависит от структуры)]
+    values:[ubyte] (flexbuffer);
+}
+
+
+enum status_type : byte{
+info,
+warrning,
+error
+}
+
+
+/*
+ *
+ * Запрос на обновление статуса ПМ
+ *
+ */
+table update_status { 
+    ///Тип статусного сообщения
+    type:status_type;
+
+    ///Сообщение
+    msg:string;
+}
+
+///Ответ
+table update_status_resp{
+    ///статус, true если нет ошибок
+    status:bool= true;
+
+    /// некорректный запрос
+    incorrect_request:bool= false;
+
+    ///внутрення ошибка ПМ Брокер сообщений, дальнейшая работа невозможна
+    internal_error:bool= false;
+}
+
+
+
+
+/*
+ *
+ * Запрос на регистрацию точки синхронизации
+ *
+ */
+table register_sync_point{
+    ///Название точки синхронизации (рекомендуется использовать короткое название для большей производительности)
+    sync_point_name:string;
+
+    ///Для каких модулей предназначена данная точка синхронизации (можно указывать себя)
+    for_modules:[string];
+}
+///Ответ
+table register_sync_point_resp{
+    ///Статус, true если нет ошибок
+    status:bool= true;
+
+    ///Некорректный запрос
+    incorrect_request:bool= false;
+
+    ///Внутрення ошибка ПМ Брокер сообщений, дальнейшая работа невозможна
+    internal_error:bool= false;
+
+    ///Точка синхронизации с таким именем уже существует
+    point_already_exists:bool= false;
+}
+
+
+
+
+/*
+ *
+ * Запрос на получение точки синхронизации
+ *
+ */
+table get_sync_point{
+
+    ///Имя точки синхронизации, которую нужно получить
+    sync_point_name:string;
+}
+///Ответ
+table get_sync_point_resp{
+
+    ///Имя полученной точки синхронизации
+    sync_point_name:string;
+
+    ///Некорректный запрос
+    incorrect_request:bool=false;
+
+    ///Внутрення ошибка ПМ Брокер сообщений, дальнейшая работа невозможна
+    internal_error:bool=false;
+}
+
+
+
+/*
+ *
+ * Запрос на получение значения текущего глобального логического времени
+ *
+ */
+table current_logical_time{
+    reserved:bool;
+}
+///Ответ
+table current_logical_time_resp{
+    ///Текущее глобальное логическое время
+    logical_time:double;
+}
+
+
+
+
+
+/*
+ *
+ * Запрос ПМ Брокер сообщений на сохранение или приостановку состояния текущего информационного обмена
+ *
+ */
+table request_from_mb_save_state{
+    ///Нужно сохранить состояние информационного обмена и разослать всем подключенным ПМ запрос на сохранение собственного сосотояния
+    need_save_state:bool;
+
+    ///Нужно приостановить текущий информационный обмен
+    experiment_paused:bool;
+}
+
+
+/*
+ *
+ * Запрос от ПМ Брокер сообщений подключенному ПМ о необходимости восстановить свое состояние
+ *
+ *
+ */
+table request_from_mb_restore_state{
+    //Всегда true
+    need_restore_state:bool=true;
+}
+
+/*
+ *
+ *
+ *Ответ от подключенного ПМ  ПМ Брокеру сообщений на запрос о восстановлении своего состояния
+ *
+ *
+ */
+table response_to_mb_restore_state_req{
+    /// true Запрос принят
+    request_accepted:bool;
+    /// true ПМ не может восстановить свое состояние
+    cannot_restore_state:bool;
+}
+
+
+/*
+ *
+ *
+ *Ответ от подключенного ПМ  ПМ Брокеру сообщений на запрос о сохранении своего состояния
+ *
+ *
+ */
+
+table response_to_mb_save_state_req{
+    /// true Запрос принят
+    request_accepted:bool = true;
+
+    ///true ПМ не может сохранить свое состояние
+    cannot_save_state:bool;
+}
+
+
+
+
+
+/*
+ *
+ * Запрос на получение информации присоединенных к системе модулей
+ *
+ */
+table joined_module_list{
+    reserved:bool;
+}
+
+table module_info{
+    module_name:string;
+    host_ip:string;
+    version:string;
+}
+
+///Ответ
+table joined_module_list_resp{
+    modules:[module_info];
+}
+
+
+
+
+/*
+ *
+ * Запрос на получение информации о публикуемых данных присоединенного модуля
+ *
+ */
+table module_data_info{
+    module_name:string;
+}
+
+
+///Ответ
+table module_data_info_resp{
+    publish_info:[publish_struct_info];
+}
+
+
+union Messages_type
+{
+join_system,
+join_system_resp,
+
+choose_sync_mode,
+choose_sync_mode_resp,
+
+publish_struct_info,
+publish_struct_info_resp,
+
+unpublish_struct,
+unpublish_struct_resp,
+
+subscribe_struct_info,
+subscribe_struct_info_resp,
+
+unsubscribe_struct,
+unsubscribe_struct_resp,
+
+next_time,
+next_time_resp,
+
+create_object,
+create_object_resp,
+
+delete_object,
+delete_object_resp,
+
+request_handle,
+request_handle_resp,
+
+quit_from_system,
+quit_from_system_resp,
+
+get_module_status,
+get_module_status_resp,
+
+update_attrubutes,
+update_attrubutes_resp,
+
+
+reflect_attributes,
+
+
+update_status,
+update_status_resp,
+
+request_from_mb_save_state,
+response_to_mb_save_state_req,
+
+request_from_mb_restore_state,
+response_to_mb_restore_state_req,
+
+register_sync_point,
+register_sync_point_resp,
+
+get_sync_point,
+get_sync_point_resp,
+
+current_logical_time,
+current_logical_time_resp,
+
+joined_module_list,
+joined_module_list_resp,
+
+module_data_info,
+module_data_info_resp
+}
+
+table Message
+{
+data:Messages_type;
+}
+
+root_type Message;

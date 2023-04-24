@@ -1,7 +1,7 @@
 import { FC, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useDispatch } from 'react-redux';
-import { getSessionSettings } from '../../api';
+import { getSessionSettings, testConnection } from '../../api';
 // import { saveSessionSettings } from '../../api';
 import FeatureInfoModal from '../../FeatureInfoModal';
 import { appendMap } from '../../store/mapSlice';
@@ -51,7 +51,9 @@ const MapCreator: FC<Props> = ({ divID }: Props) => {
     observer.observe(div);
 
     if (divID === 'map4') {
-      getSessionSettings();
+      testConnection().then(() => {
+        getSessionSettings();
+      })
     }
   }, []);
 

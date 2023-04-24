@@ -108,12 +108,21 @@ export const sidebarSlice = createSlice({
 
     setViewSettings: (state, action: PayloadAction<{map: number, settings: IViewSettings}>) => {
       state[action.payload.map].viewSettings = action.payload.settings;
+      console.log();
       saveSessionSidebarSettings(state);
     },
 
     setDistanceSettings: (state, action: PayloadAction<{map: number, settings: IDistanceSettings}>) => {
+      let save = true;
+
+      if (
+        state[action.payload.map].distanceSettings.object1 === action.payload.settings.object1 &&
+        state[action.payload.map].distanceSettings.object2 === action.payload.settings.object2
+      ) save = false;
+
       state[action.payload.map].distanceSettings = action.payload.settings;
-      saveSessionSidebarSettings(state);
+      
+      save && saveSessionSidebarSettings(state);
     },
 
     setRouteSettings: (state, action: PayloadAction<{map: number, settings: IRouteSettings}>) => {
@@ -134,7 +143,7 @@ export const sidebarSlice = createSlice({
     setSidebarSettings: (state, action: PayloadAction<SidebarState>) => {
       for (let id in action.payload) {
         state[Number(id)] = action.payload[id];
-      }
+      };
     },
   },
 });

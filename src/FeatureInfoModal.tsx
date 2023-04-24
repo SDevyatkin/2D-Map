@@ -25,10 +25,11 @@ const FeatureInfoModal: FC<Props> = ({ divID }) => {
   // const [info, setInfo] = useState<IFeatureInfo>();
   const dispatch = useDispatch();
 
-  const { featureInfo } = useSelector((state: RootState) => ({
+  const { featureInfo, featureInfoID } = useSelector((state: RootState) => ({
     // Map: state.Map.maps[divID],
     // featureInfo: state.featuresData.data,
-    featureInfo: state.featuresData.data[state.sidebar[Number(divID.slice(3))].featureInfoID]
+    featureInfo: state.featuresData.data[state.sidebar[Number(divID.slice(3))].featureInfoID],
+    featureInfoID: state.sidebar[Number(divID.slice(3))].featureInfoID,
   }));
 
   // useEffect(() => {
@@ -49,7 +50,7 @@ const FeatureInfoModal: FC<Props> = ({ divID }) => {
   return createPortal(
     <>
       {
-        featureInfo &&
+        (featureInfoID !== -1 && featureInfo) &&
           <div className='feature-info-modal'>
             <div>Номер объекта: {featureInfo.id}</div>
             <div>Тип объекта: {featureInfo.type}</div>

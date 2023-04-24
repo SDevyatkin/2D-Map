@@ -6,6 +6,7 @@ import { ModalProps } from './modal.interface';
 import ModalOverlay from './ModalOverlay';
 import close from '../../assets/close.png';
 import CommonTooltip from '../../CommonTooltip';
+import { InstrumentsButton } from '../../StyledButton';
 
 const ModelCreation: FC = () => {
 
@@ -82,7 +83,9 @@ const ModelCreation: FC = () => {
             <CommonTooltip
               title='Сохранить иконку.'
             >
-              <button className='primary-btn sidebar-btn' onClick={saveModel} disabled={!modelName}>Сохранить</button>
+              <InstrumentsButton onClick={saveModel} disabled={!modelName}>
+                Сохранить
+              </InstrumentsButton>
             </CommonTooltip>
           </div>
         </div>

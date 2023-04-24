@@ -10,7 +10,10 @@ export const useData = () => {
 
   useEffect(() => {
 
-    testConnection().then(() => {
+    testConnection().then((res) => {
+      if (res !== 200) {
+        return
+      }
 
       mapConfig = getMapURL();
       imageNames = getImageNames()

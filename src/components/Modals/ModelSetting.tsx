@@ -1,18 +1,31 @@
 import { ChangeEvent, FC, MouseEvent, useContext, useEffect } from 'react';
 import { ModalProps } from './modal.interface';
 import ModalOverlay from './ModalOverlay';
-import Select from '../Select';
+import Selector from '../Select';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
-import { changeImage, changeMarkerSettings, changeModel, changeOpacity, changeSize, changeType } from '../../store/modelSettingsSlice';
+import { changeImage, changeMarkerSettings, changeModel, changeModelColor, changeModelStroke, changeOpacity, changeSize, changeType, StrokeType } from '../../store/modelSettingsSlice';
 import TableRow from './TableRow';
 import close from '../../assets/close.png';
 import { BASE_URL } from '../../api';
 import CommonTooltip from '../../CommonTooltip';
+import { InstrumentsButton } from '../../StyledButton';
+import { HexAlphaColorPicker, HexColorInput } from 'react-colorful';
+
+const modelStrokes = {
+  'Сплошная': 'solid', 
+  'Пунктирная': 'dashed',
+};
+const lines = ['Сплошная', 'Пунктирная', 'Штриховая', 'Штрихпунктирная', 'Волнистая'];
 
 const ModelSetting: FC = () => {
 
-  const { type, image, size, opacity, model, imageNames, polygonModels, markerSettings } = useSelector((state: RootState) => state.modelSettings);
+  const { 
+    type, image, size,
+    opacity, model, modelStroke,
+    modelColor, imageNames, 
+    polygonModels, markerSettings, 
+  } = useSelector((state: RootState) => state.modelSettings);
   const dispatch = useDispatch();
 
   const polygonModelNames = Object.keys(polygonModels);
@@ -37,8 +50,16 @@ const ModelSetting: FC = () => {
     dispatch(changeModel(event.target.value));
   };
 
+  const handleModelStrokeChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    dispatch(changeModelStroke(event.target.value as StrokeType));
+  };
+
+  const handleModelColorChange = (color: string) => {
+    dispatch(changeModelColor(color));
+  };
+
   const saveModelSettings = () => {
-    dispatch(changeMarkerSettings( { type, image, size, opacity, model }));
+    dispatch(changeMarkerSettings( { type, image, size, opacity, model, modelStroke, modelColor }));
   };
 
   const stopPropagation = (event: MouseEvent) => event.stopPropagation();
@@ -58,7 +79,7 @@ const ModelSetting: FC = () => {
             title='Каждый объект на карте относится к определённому типу, т.е. установленные стили блудут применены ко всем объектам с этим типом.'
           >
             <div>
-              <Select value={type} data={Array.from({length: 200}, (_, i) => i + 200)} noneField='' onChange={handleTypeChange} /> 
+              <Selector value={type} data={Array.from({length: 200}, (_, i) => i + 200)} noneField='' onChange={handleTypeChange} /> 
             </div>
           </CommonTooltip>
         </div>
@@ -68,7 +89,7 @@ const ModelSetting: FC = () => {
             title='Изображение, которым будут обозначаться объекты на карте.'
           >
             <div>
-              <Select value={image} data={imageNames} noneField='' onChange={handleImageChange} />
+              <Selector value={image} data={imageNames} noneField='' onChange={handleImageChange} />
             </div>
           </CommonTooltip>
         </div>
@@ -95,11 +116,46 @@ const ModelSetting: FC = () => {
             title='Пользовательская иконка, отображающаяся с реальными размерами на карте.'
           >
             <div>
-              <Select value={model} data={polygonModelNames} noneField='Нет' onChange={handleModelChange} />
+              <Selector value={model} data={polygonModelNames} noneField='Нет' onChange={handleModelChange} />
             </div>
           </CommonTooltip>
         </div>
-        <button className='primary-btn sidebar-btn' onClick={saveModelSettings}>Сохранить модель</button>
+        { (model !== '' && model !== 'None') &&
+          <>
+            <div className='settings-item'>
+              <span>Текстура линии:</span>
+              <CommonTooltip
+                title='Текстура линии выделения'
+              >
+                <div>
+                  <Selector value={modelStroke} data={['Сплошная', 'Пунктирная']} noneField='' onChange={handleModelStrokeChange} />
+                </div>
+              </CommonTooltip>
+            </div>
+            <div className='settings-item'>
+              <span>Цвет заливки:</span>
+              <CommonTooltip
+                title='Цвет заливки пользовательской двухмерной иконки'
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <HexColorInput color={modelColor} onChange={handleModelColorChange} />
+                  <HexAlphaColorPicker color={modelColor} onChange={handleModelColorChange} />
+                </div>
+              </CommonTooltip>
+            </div>
+            {/* <div className='settings-item'>
+              <span>Прозрачность:</span>
+              <CommonTooltip
+                title='Прозрачность пользовательской двухмерной иконки'
+              >
+                <input type='number' value={modelOpacity} step={0.1} onChange={handleModelOpacityChange} />
+              </CommonTooltip>
+            </div> */}
+          </>
+        }
+        <InstrumentsButton onClick={saveModelSettings}>
+          Сохранить модель
+        </InstrumentsButton>
       </>
     //   </div>
     // </ModalOverlay>

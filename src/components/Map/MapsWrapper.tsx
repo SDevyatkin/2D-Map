@@ -316,6 +316,7 @@ const MapsWrapper: FC<Props> = ({ shift }) => {
   };
   // console.log(mapHeight, clientHeight, document.documentElement.clientHeight);
   // console.log((widgetsLayout === '3t' || widgetsLayout === '3b') ? `calc(${divSizes[Number(vSplitterHeight)].height}px)` : vSplitterHeight);
+  
   return (
     <>
       <div

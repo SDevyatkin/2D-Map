@@ -1,14 +1,17 @@
-import { DetailedHTMLProps, FC, SelectHTMLAttributes } from 'react';
+import { ChangeEvent, DetailedHTMLProps, FC, SelectHTMLAttributes } from 'react';
 
 interface SelectProps extends DetailedHTMLProps<SelectHTMLAttributes<HTMLSelectElement>, HTMLSelectElement> {
-  data: any[],
-  noneField: string,
-};
+// interface SelectorProps {
+  data: any[];
+  noneField: string;
+  // value: string | number;
+  // onChange: (event: ChangeEvent<{ value: unknown }>) => void;
+}
 
 const Select: FC<SelectProps> = ({ data, noneField, value, onChange }) => {
 
   return (
-    <select value={value} onChange={onChange}>
+    <select className='custom-select' value={value} onChange={onChange}>
       {
         noneField && <option value='None'>{ noneField }</option>
       }

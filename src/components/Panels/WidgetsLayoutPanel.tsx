@@ -10,6 +10,7 @@ import win3r from '../../assets/win3r.svg';
 import win4 from '../../assets/win4.svg';
 import { RootState } from '../../store/store';
 import { setLayout, WidgetsLayout } from '../../store/widgetSettingsSlice';
+import { StyledButton } from '../../StyledButton';
 
 interface Props {
   onClose: () => void; 
@@ -19,11 +20,15 @@ const WidgetsLayoutPanel: FC<Props> = ({ onClose }) => {
 
   const dispatch = useDispatch();
 
-  const widgetsLayout = useSelector((state: RootState) => state.widgetSettings.widgetsLayout);
+  const { widgetsLayout, maps } = useSelector((state: RootState) => ({
+    widgetsLayout: state.widgetSettings.widgetsLayout,
+    maps: state.Map.maps,
+  }));
 
   const handleWidgetsLayout = (event: MouseEvent<HTMLButtonElement>) => {
     const layout = event.currentTarget.id as WidgetsLayout;
     
+    Object.values(maps).forEach((m) => m.setWidgetsLayout(layout));
     dispatch(setLayout(layout));
     onClose();
   };
@@ -41,70 +46,62 @@ const WidgetsLayoutPanel: FC<Props> = ({ onClose }) => {
         borderLeft: '1px solid #000',
       }}
     >
-      <button
+      <StyledButton
         id='1'
-        className={`menu-btn${widgetsLayout === '1' ? ' menu-btn-active' : ''}`} 
-        style={{ width: '60px' }}
+        isactive={widgetsLayout === '1' ? true : false }
         onClick={handleWidgetsLayout}
       >
         <img className='widget-layout-icon' src={win1} draggable={false} />
-      </button>
-      <button
+      </StyledButton>
+      <StyledButton
         id='2v'
-        className={`menu-btn${widgetsLayout === '2v' ? ' menu-btn-active' : ''}`} 
-        style={{ width: '60px' }}
+        isactive={widgetsLayout === '2v' ? true : false }
         onClick={handleWidgetsLayout}
       >
         <img className='widget-layout-icon' src={win2v} draggable={false} />
-      </button>
-      <button
+      </StyledButton>
+      <StyledButton
         id='2h'
-        className={`menu-btn${widgetsLayout === '2h' ? ' menu-btn-active' : ''}`} 
-        style={{ width: '60px' }}
+        isactive={widgetsLayout === '2h' ? true : false }
         onClick={handleWidgetsLayout}
       >
         <img className='widget-layout-icon' src={win2h} draggable={false} />
-      </button>
-      <button
+      </StyledButton>
+      <StyledButton
         id='3t'
-        className={`menu-btn${widgetsLayout === '3t' ? ' menu-btn-active' : ''}`} 
-        style={{ width: '60px' }}
+        isactive={widgetsLayout === '3t' ? true : false }
         onClick={handleWidgetsLayout}
       >
         <img className='widget-layout-icon' src={win3t} draggable={false} />
-      </button>
-      <button
+      </StyledButton>
+      <StyledButton
         id='3b'
-        className={`menu-btn${widgetsLayout === '3b' ? ' menu-btn-active' : ''}`} 
-        style={{ width: '60px' }}
+        isactive={widgetsLayout === '3b' ? true : false }
         onClick={handleWidgetsLayout}
       >
         <img className='widget-layout-icon' src={win3b} draggable={false} />
-      </button>
-      <button
+      </StyledButton>
+      <StyledButton
         id='3l'
-        className={`menu-btn${widgetsLayout === '3l' ? ' menu-btn-active' : ''}`} 
-        style={{ width: '60px' }}
+        isactive={widgetsLayout === '3l' ? true : false }
         onClick={handleWidgetsLayout}
       >
         <img className='widget-layout-icon' src={win3l} draggable={false} />
-      </button>
-      <button
-        id='3b'
-        className={`menu-btn${widgetsLayout === '3r' ? ' menu-btn-active' : ''}`} 
-        style={{ width: '60px' }}
+      </StyledButton>
+      <StyledButton
+        id='3r'
+        isactive={widgetsLayout === '3r' ? true : false }
         onClick={handleWidgetsLayout}
       >
         <img className='widget-layout-icon' src={win3r} draggable={false} />
-      </button>
-      <button
+      </StyledButton>
+      <StyledButton
         id='4'
-        className={`menu-btn${widgetsLayout === '4' ? ' menu-btn-active' : ''}`} 
-        style={{ width: '60px' }}
+        isactive={widgetsLayout === '4' ? true : false }
         onClick={handleWidgetsLayout}
       >
         <img className='widget-layout-icon' src={win4} draggable={false} />
-      </button>
+      </StyledButton>
     </div>
   );
 };

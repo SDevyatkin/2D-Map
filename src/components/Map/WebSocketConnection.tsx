@@ -1,6 +1,6 @@
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { testConnection } from '../../api';
+import { BASE_URL, testConnection } from '../../api';
 import { setFeaturesData } from '../../store/featuresDataSlice';
 import { changePinObjects } from '../../store/pinObjectsSlice';
 import { RootState, store } from '../../store/store';
@@ -13,14 +13,19 @@ const WebSocketConnection: FC = () => {
   const Maps = useSelector((state: RootState) => Object.values(state.Map.maps));
 
   useEffect(() => {
-    testConnection().then((status) => {
-      // console.log(status);
-      if (status === 200) {
-        setWS(new WebSocket('ws://localhost:3001'));
-      } else {
-        setWS(new WebSocket('ws://192.168.0.110:3001'))
-      }
-    });
+    // console.log(BASE_URL, `ws${BASE_URL.slice(4, BASE_URL.length - 1)}1`);
+    const connectWS = async () => {
+      testConnection().then(() => setWS(new WebSocket(`ws${BASE_URL.slice(4, BASE_URL.length - 1)}1`)));
+    };
+
+    connectWS();
+    // testConnection().then((status) => {
+    //   console.log(status);
+    //   if (status === 200) {
+    //     setWS(new WebSocket('ws://localhost:3001'));
+    //   } else {
+    //     setWS(new WebSocket('ws://192.168.0.110:3001'))
+    //   }
     // try { 
     //   const response = testConnection();
     //   let socket = new WebSocket('ws://localhost:3001');
@@ -43,7 +48,7 @@ const WebSocketConnection: FC = () => {
 
     const wsOnMessage = (event: MessageEvent<any>) => {
       const data = JSON.parse(event.data);
-  
+
       const features = data.features;
       const idsByAltitude = data.idsByAltitude;
       const routes = data.routes;

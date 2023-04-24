@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { getRoute, pushRouteID, stopSendRoutes } from '../../api';
 import { setRouteSettings } from '../../store/sidebarSlice';
 import { RootState } from '../../store/store';
+import { InstrumentsButton } from '../../StyledButton';
 import Select from '../Select';
 import ColorInput from './ColorInput';
 
@@ -84,8 +85,8 @@ const RoutesPanel: FC = () => {
       </div>
       <ColorInput parentId='routes-panel' colorInput={colorInput} sendColorInput={handleColorInput} sendColor={handleColor} />
       <div className='buttons'>
-        <button className='primary-btn sidebar-btn' onClick={drawRoute}>построить</button>
-        <button className='primaty-btn sidebar-btn' onClick={clearRoutesLayer}>очистить</button>
+        <InstrumentsButton onClick={drawRoute}>построить</InstrumentsButton>
+        <InstrumentsButton onClick={clearRoutesLayer}>очистить</InstrumentsButton>
       </div>
     </div>
   );

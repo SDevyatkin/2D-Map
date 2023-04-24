@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { clearDistances, saveDistance } from '../../api';
 import { setDistanceSettings } from '../../store/sidebarSlice';
 import { RootState } from '../../store/store';
+import { InstrumentsButton } from '../../StyledButton';
 import Select from '../Select';
 import ColorInput from './ColorInput';
 
@@ -53,12 +54,17 @@ const DistancePanel: FC = () => {
   };
 
   const drawDistance = () => {
-    const obj1 = Number(object1);
-    const obj2 = Number(object2);
+    let obj1 = Number(object1);
+    let obj2 = Number(object2);
 
-    saveDistance(`map${MapID}`, obj1, obj2, color);
-    Map.setDistanceColor(obj1, obj2, color);
+    if (obj1 < obj2)  {
+      obj1 = obj2;
+      obj2 = Number(object1);
+    }
+
+    Map.setDistanceColor(obj1, obj2, colorInput);
     Map.pushDistance(obj1 > obj2 ? [obj1, obj2] : [obj2, obj1]);
+    saveDistance(`map${MapID}`, obj1, obj2, colorInput);
     dispatch(setDistanceSettings({
       map: MapID,
       settings: {
@@ -68,12 +74,11 @@ const DistancePanel: FC = () => {
       },
     }));
     setColorInput('');
-    
   };
 
   const clearDistanceLayer = () => {
-    clearDistances(`map${MapID}`);
     Map.clearDistanceLayer();
+    clearDistances(`map${MapID}`);
   };
 
   const handleColor = (c: string) => {
@@ -104,8 +109,8 @@ const DistancePanel: FC = () => {
       </div>
       <ColorInput parentId='distance-panel' colorInput={colorInput} sendColorInput={handleColorInput} sendColor={handleColor} />
       <div className='buttons'>
-        <button className='primary-btn sidebar-btn' disabled={buttonDisabled} onClick={drawDistance}>построить</button>
-        <button className='primaty-btn sidebar-btn' onClick={clearDistanceLayer}>очистить</button>
+        <InstrumentsButton disabled={buttonDisabled} onClick={drawDistance}>построить</InstrumentsButton>
+        <InstrumentsButton onClick={clearDistanceLayer}>очистить</InstrumentsButton>
       </div>
     </div>
   );
