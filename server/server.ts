@@ -13,6 +13,10 @@ import { v4 } from 'uuid';
 import Logger from './Logger';
 import { TCP } from './TcpConnection/TcpConnection';
 
+// const addon = require("./addon/build/Release/addon");
+
+// console.log(addon.my_function());
+
 interface IClients {
   [key: number]: WebSocket;
 }

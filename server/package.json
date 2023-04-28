@@ -18,7 +18,7 @@
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "express": "^4.18.2",
-    "flatbuffers": "^23.3.3",
+    "flatbuffers": "^22.12.6",
     "npmlog": "^7.0.1",
     "ts-node": "^10.9.1",
     "uuid": "^9.0.0",
