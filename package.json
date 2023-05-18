@@ -43,6 +43,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
+    "install-all": "concurrently \"cd server && npm install\" \"npm install\"",
     "start-all": "concurrently \"cd server && npm run server\" \"npm start\""
   },
   "eslintConfig": {

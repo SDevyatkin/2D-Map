@@ -38,6 +38,7 @@ const RoutesPanel: FC = () => {
       const currentColor = color ? color : '#000';
       const route = await getRoute(object);
       Map.setRouteColor(object, currentColor);
+      Map.pushRoute(Number(object));
       Map.drawRoutes({
         [Number(object)]: {
           route: route[Number(object)],

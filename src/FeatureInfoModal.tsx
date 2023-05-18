@@ -25,10 +25,9 @@ const FeatureInfoModal: FC<Props> = ({ divID }) => {
   // const [info, setInfo] = useState<IFeatureInfo>();
   const dispatch = useDispatch();
 
-  const { featureInfo, featureInfoID } = useSelector((state: RootState) => ({
-    // Map: state.Map.maps[divID],
-    // featureInfo: state.featuresData.data,
+  const { featureInfo, featureFields, featureInfoID  } = useSelector((state: RootState) => ({
     featureInfo: state.featuresData.data[state.sidebar[Number(divID.slice(3))].featureInfoID],
+    featureFields: state.featuresData.fields[state.sidebar[Number(divID.slice(3))].featureInfoID],
     featureInfoID: state.sidebar[Number(divID.slice(3))].featureInfoID,
   }));
 
@@ -45,19 +44,16 @@ const FeatureInfoModal: FC<Props> = ({ divID }) => {
     // setInfo(undefined);
   };
 
-  // console.log(info);
-  // console.log(featureInfo);
   return createPortal(
     <>
       {
         (featureInfoID !== -1 && featureInfo) &&
           <div className='feature-info-modal'>
-            <div>Номер объекта: {featureInfo.id}</div>
-            <div>Тип объекта: {featureInfo.type}</div>
-            <div>Широта: {featureInfo.latitude.toFixed(3)}</div>
-            <div>Долгота: {featureInfo.longitude.toFixed(3)}</div>
-            <div>Высота: {featureInfo.altitude.toFixed(3)}</div>
-            <div>Рыскание: {featureInfo.yaw.toFixed(3)}</div>
+            {
+              Object.keys(featureInfo).map((f) => (
+                featureFields[f] ? <div>{f}: { Number.isInteger(featureInfo[f]) ? featureInfo[f] : featureInfo[f].toFixed(3) }</div> : null
+              ))
+            }
             <button className='close-btn' onClick={handleClose}>
               <img src={close} width={15} height={15} />
             </button>

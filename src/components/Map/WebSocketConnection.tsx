@@ -48,7 +48,6 @@ const WebSocketConnection: FC = () => {
 
     const wsOnMessage = (event: MessageEvent<any>) => {
       const data = JSON.parse(event.data);
-
       const features = data.features;
       const idsByAltitude = data.idsByAltitude;
       const routes = data.routes;
@@ -57,25 +56,24 @@ const WebSocketConnection: FC = () => {
       const routesByMap = data.routesByMap[cookie] ? data.routesByMap[cookie] : {};
       const distancesByMap = data.distancesByMap[cookie] ? data.distancesByMap[cookie] : {};
   
-      dispatch(changePinObjects(Object.keys(features).map(id => Number(id)).filter(id => features[id].parentID !== 'death')));
+      dispatch(changePinObjects(features.filter((f: any) => "id" in f).map((f: any) => f.id)));
       dispatch(setFeaturesData(features));
 
+      console.log(features[1].Psi);
       for (let Map of Maps) {
-        Map.updateFeaturesData(features, idsByAltitude);
+        Map.updateFeaturesDataNew(features);
 
         const mapID = Map.getDivID();
         const filteredRoutes: IRoutes = {};
-        // console.log(routesByMap);
+        
         if (routesByMap.hasOwnProperty(mapID)) {
-          // console.log(routesByMap[mapID]);
           routesByMap[mapID].map((route: any) => {
             filteredRoutes[route.object] = {
-              route: routes[route.object],
+              route: routes[route.object][route.object],
               color: route.color,
             };
           });
         }
-        // console.log(filteredRoutes);
         Map.drawRoutes(filteredRoutes);
 
         if (distancesByMap.hasOwnProperty(mapID)) {

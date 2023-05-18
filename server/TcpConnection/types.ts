@@ -1,10 +1,10 @@
 interface SectionData {
-  name_group: string;
   tr_name: string;
   discribe: string;
 }
 
 interface SectionDataWithValue extends SectionData {
+  name_param: string;
   value: any;
   max_value: any;
   min_value: any;
@@ -12,6 +12,7 @@ interface SectionDataWithValue extends SectionData {
 }
 
 interface SectionDataWithParams extends SectionData {
+  name_group: string;
   params: ReadonlyArray<any>;
 }
 
@@ -25,6 +26,31 @@ export interface ConfigurationData {
   intermediate_state: ReadonlyArray<(SectionDataWithValue | SectionDataWithParams)>;
 }
 
+export interface SizeData {
+  size: number;
+}
+
+// INCORRECT
 export interface ConfigurationDataResponse {
   response: ConfigurationData;
+}
+
+export interface CSMResponse {
+  response: ConfigurationData | string[];
+  what: string;
+}
+
+export interface CSMErrorResponse {
+  response: {
+    status: string;
+  }
+}
+
+export interface SubscribeStructInfoUnpacked {
+  status: boolean;
+  incorrectRequest: boolean;
+  internalError: boolean;
+  structHandle: number;
+  objectHandle: number;
+  fieldsHandle: number[];
 }

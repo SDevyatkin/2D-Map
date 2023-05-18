@@ -57,8 +57,9 @@ type mapObjectType = {
 interface FeaturesObjectI {
   [key: number]: {
     feature: Feature,
-    featureParams: mapObjectType,
+    featureParams: any,//mapObjectType,
     style: Style,
+    attachedFeatures: any[],
   }
 }
 
@@ -108,9 +109,11 @@ class MapCanvas {
   private dispatch: Dispatch;
   private TileSource = new OSM();
   private ObjectsLayerSource = new VectorSource();
-  private ObjectsLayer = new VectorLayer({ zIndex: 10 });
+  private ObjectsLayer = new VectorLayer({ zIndex: 11 });
+  private AttachedLayerSource = new VectorSource();
+  private AttachedLayer = new VectorLayer({ source: this.AttachedLayerSource, zIndex: 9 });
   private InfoLayerSource = new VectorSource();
-  private InfoLayer = new VectorLayer({ source: this.InfoLayerSource, zIndex: 9 });
+  private InfoLayer = new VectorLayer({ source: this.InfoLayerSource, zIndex: 10 });
   private PolygonsLayerSource = new VectorSource({});
   private PolygonLayer = new VectorLayer({ zIndex: 8 });
   private DrawLayerSource = new VectorSource({});
@@ -193,6 +196,17 @@ class MapCanvas {
 
     this.map.addLayer(this.ObjectsLayer);
     this.ObjectsLayer.setSource(this.ObjectsLayerSource);
+
+    this.map.addLayer(this.AttachedLayer);
+    this.AttachedLayer.setStyle(new Style({
+      stroke: new Stroke({
+        color: '#000',
+        width: 2,
+      }),
+      fill: new Fill({
+        color: 'rgba(0, 0, 0, 0.4)',
+      }),
+    }));
 
     this.map.addLayer(this.InfoLayer);
 
@@ -1523,24 +1537,32 @@ class MapCanvas {
   }
 
   private drawDistance(distance: [number, number]) {
+    const featureParams1 = this.FeaturesObject[distance[0]].featureParams
+    const hasMercatorCoords1 = "X" in featureParams1;
+
+    const featureParams2 = this.FeaturesObject[distance[1]].featureParams
+    const hasMercatorCoords2 = "X" in featureParams2;
 
     const distanceLine = greatCircle(
-      [
-        this.FeaturesObject[distance[0]].featureParams.longitude,
-        this.FeaturesObject[distance[0]].featureParams.latitude,
-      ],
-      [
-        this.FeaturesObject[distance[1]].featureParams.longitude, 
-        this.FeaturesObject[distance[1]].featureParams.latitude,
-      ],
+      hasMercatorCoords1 ? toLonLat([featureParams1.X, featureParams1.Y]) : [featureParams1.latitude, featureParams1.longitude],
+      hasMercatorCoords2 ? toLonLat([featureParams2.X, featureParams2.Y]) : [featureParams2.latitude, featureParams2.longitude],
       {
         npoints: 10,
       }
     );
 
+    // const distanceLine = greatCircle(
+    //   [featureParams1.latitude, featureParams1.longitude],
+    //   [featureParams2.latitude, featureParams2.longitude],
+    //   {
+    //     npoints: 10,
+    //   }
+    // );
+
     // @ts-ignore
     // const  distanceLineGeoJSON = new GeoJSON().writeFeatureObject(distanceLine);
 
+    // console.log(distanceLine);
     const featureId = `${distance[0]}_distance_${distance[1]}`;
 
     const distanceFeature = new Feature({
@@ -1635,7 +1657,9 @@ class MapCanvas {
 
     for (let key of Object.keys(routes)) {
       this.setRouteColor(Number(key), routes[Number(key)].color);
-      const coordinates = routes[Number(key)].route.map(point => fromLonLat(point.slice().reverse()));
+      const coordinates = routes[Number(key)].route;
+
+      if (!this.routesID.includes(Number(key))) continue;
 
       if (!this.RoutesLayerSource.getFeatureById(key)) {
         const geometry = new LineString(coordinates);
@@ -1651,7 +1675,6 @@ class MapCanvas {
           }),
         }));
 
-        console.log(feature.getStyle());
         this.RoutesLayerSource.addFeature(feature);
       } else {
         (this.RoutesLayerSource.getFeatureById(key)?.getGeometry() as LineString)
@@ -1833,8 +1856,8 @@ class MapCanvas {
     return new Map({
       layers: [
         new TileLayer({ 
-          source: this.TileSource,
-          // source: new XYZ({ url: 'http://127.0.0.1/tile/{z}/{x}/{y}.png' }),
+          // source: this.TileSource,
+          source: new XYZ({ url: 'http://127.0.0.1/tile/{z}/{x}/{y}.png' }),
           preload: 6,
           useInterimTilesOnError: true,
         }),
@@ -1939,6 +1962,194 @@ class MapCanvas {
     // console.log(this.MarkersObject);
   }
 
+  private drawAttachedObject(feature: any) {
+    const existedFeature = this.AttachedLayerSource.getFeatureById(`attached_${feature.attached_to}`);
+
+    if (
+      (!("attached_to" in feature) && !("default_X" in feature)) 
+      || !("Psi" in feature) 
+      || !this.FeaturesObject.hasOwnProperty(feature.attached_to)
+    ) return;
+
+
+    let parentCoord = [0, 0];
+    
+    if ("attached_to" in feature) {
+      const parent = this.FeaturesObject[feature.attached_to].featureParams;
+      parentCoord = "X" in parent ? [parent.X, parent.Y] : fromLonLat([parent.longitude, parent.latitude]);
+    } else if ("default_X" in feature) {
+      parentCoord = [feature.default_X, feature.default_Y];
+    }
+
+    const R = 500; 
+
+    const anglePolygon = new LineString([
+      parentCoord,
+      [parentCoord[0] + R * Math.cos(feature.Psi * Math.PI / 180), parentCoord[1] + R * Math.sin(feature.Psi * Math.PI / 180)],
+    ]);
+
+    if (existedFeature) {
+      existedFeature.setGeometry(anglePolygon);
+    }
+
+    const angleFeature = new Feature();
+    angleFeature.setGeometry(anglePolygon);
+    angleFeature.setId(`attached_${feature.attached_to}`);
+
+    this.AttachedLayerSource.addFeature(angleFeature);
+  }
+
+  public async updateFeaturesDataNew(features: any[]) {
+    if (features.length) {
+      this.InfoLayerSource.clear();
+
+      for (let feature of features) {
+        if (!("id" in feature)) {
+          if (this.FeaturesObject[feature.attached_to]) {
+            this.FeaturesObject[feature.attached_to].attachedFeatures.push(feature)
+          }
+          continue;
+        }
+
+        const featureID = feature.id;
+
+        if (!this.FeaturesObject.hasOwnProperty(feature.id)) {
+
+          const featurePoint = ("X" in feature) ?
+            new Point([feature.X, feature.Y]) :
+            new Point(fromLonLat([feature.longitude, feature.latitude]));
+
+          const newFeature = new Feature({
+            geometry: featurePoint,
+          });
+
+          newFeature.setId(featureID);
+
+          const newFeatureStyle = new Style({ zIndex: 2 });
+
+          newFeatureStyle.setText(
+            new Text({
+              textAlign: 'center',
+              justify: 'center',
+              font: 'lighter 22px Arial, sans-serif',
+              fill: new Fill({ color: '#000' }),
+              stroke: new Stroke({
+                color: '#000',
+                width: 1,
+              }),
+              text: String(featureID),
+              backgroundFill: new Fill({ color: 'rgba(255, 255, 255, 0.8)' }),
+              backgroundStroke: new Stroke({
+                width: 1,
+                color: '#000',
+              }),
+              padding: [0, 2, 0, 4],
+              offsetX: 30,
+              offsetY: 30,
+            })
+          );
+
+          const markerSetting = this.MarkersObject[feature.type];
+
+          if (markerSetting) {
+            newFeatureStyle.setImage(
+              new Icon({
+              opacity: markerSetting.alpha,
+              scale: markerSetting.size,
+              src: `${BASE_URL}/public/images/${markerSetting.image}`,
+              rotation: feature.Psi ? feature.Psi / 57.2958 + this.currentRotation : 0,
+            }));
+          } else {
+            newFeatureStyle.setImage(
+              new Icon({
+              opacity: 1,
+              scale: 0.15,
+              src: `${BASE_URL}/public/images/question.png`,
+              rotation: feature.Psi ? feature.Psi / 57.2958 + this.currentRotation : 0,
+            }));
+          }
+
+          newFeature.setStyle(newFeatureStyle);
+
+          this.ObjectsLayerSource.addFeature(newFeature);
+
+          this.FeaturesObject[featureID] = {
+            feature: newFeature,
+            featureParams: feature,
+            style: newFeatureStyle,
+            attachedFeatures: (this.FeaturesObject[featureID] && this.FeaturesObject[featureID].attachedFeatures) 
+              ? this.FeaturesObject[featureID].attachedFeatures 
+              : [],
+          }
+        } else {
+          this.FeaturesObject[featureID].featureParams = feature;
+
+          ("X" in feature) ? 
+            this.moveObjectLayerFeature(featureID, feature.X, feature.Y, true) :
+            this.moveObjectLayerFeature(featureID, feature.longitude, feature.latitude, false);
+
+          if ("Psi" in feature) {
+            this.FeaturesObject[featureID].style.getImage().setRotation((feature.Psi / 57.2958) + this.currentRotation)
+          }
+
+        }
+
+        if (this.featureBindedInfoIds.includes(featureID)) {
+          const infoFeature = new Feature({});
+          const infoFeatureGeometry = ("X" in feature) ?
+            new Point([feature.X, feature.Y]) :
+            new Point(fromLonLat([feature.longitude, feature.latitude]));
+
+          infoFeature.setGeometry(infoFeatureGeometry);
+
+          let info = "";
+          const fields = store.getState().featuresData.fields[featureID];
+          for (let [key, value] of Object.entries(feature)) {
+            if (!fields[key]) continue;
+
+            info += `${key}: ${Number.isInteger(value) ? value : (value as number).toFixed(3)}\n`
+          }
+
+          infoFeature.setStyle(new Style({
+            text: new Text({
+              font:'lighter 16px Arial, sans-serif',
+              fill: new Fill({ color: '#000' }),
+              stroke: new Stroke({
+                color: '#000',
+                width: 1,
+              }),
+              backgroundFill: new Fill({ color: 'rgba(255, 255, 255, 0.8)' }),
+              backgroundStroke: new Stroke({
+                width: 1,
+                color: '#000',
+              }),
+              text: info,
+              textAlign: 'start',
+              justify: 'left',
+              padding: [10, 10, -10, 10],
+              offsetX: -150,
+              offsetY: 0,
+            }),
+          }));
+
+          this.InfoLayerSource.addFeature(infoFeature);
+        }
+
+        this.FeaturesObject[feature.id].attachedFeatures.forEach(f => this.drawAttachedObject(f));
+      }
+    }
+
+    this.DistanceLayerSource.clear();
+    for (let distance of this.distances) {
+      if (this.FeaturesObject[distance[0]] && this.FeaturesObject[distance[1]]) {
+        this.drawDistance(distance);
+      }
+    }
+
+    this.updatePolygonsData();
+    this.setViewCenter();
+  }
+
   public async updateFeaturesData(features: IFeatures, idsByAltitude: number[]) {
 
     if (Object.keys(features).length !== 0) {
@@ -2004,12 +2215,13 @@ class MapCanvas {
           this.FeaturesObject[features[key].id] = {
             feature: newFeature,
             featureParams: features[key],
-            style: newFeatureStyle
+            style: newFeatureStyle,
+            attachedFeatures: [],
           }
 
         } else {
           this.FeaturesObject[features[key].id].featureParams = features[key];
-          this.moveObjectLayerFeature(features[key].id, features[key].longitude, features[key].latitude);
+          this.moveObjectLayerFeature(features[key].id, features[key].longitude, features[key].latitude, false);
           this.FeaturesObject[features[key].id].style.getImage().setRotation((features[key].yaw / 57.2958) + this.currentRotation)
         }
 
@@ -2077,11 +2289,13 @@ class MapCanvas {
     this.setViewCenter();
   }
 
-  private moveObjectLayerFeature(id: number, lon: number, lat: number) {
+  private moveObjectLayerFeature(id: number, lon: number, lat: number, isMercator: boolean) {
     const feature = this.FeaturesObject[id].feature;
 
     const geometry = feature.getGeometry() as Point; 
-    geometry.setCoordinates(fromLonLat([lon, lat]));
+    geometry.setCoordinates(
+      isMercator ? [lon, lat] : fromLonLat([lon, lat])
+    );
   }
 
   private getExtremePoints(extent: Extent, size: Size, rotation: number) {
@@ -2269,13 +2483,16 @@ class MapCanvas {
 
   private setViewCenter() {
     if (this.centeredObject !== 'None' && this.FeaturesObject[this.centeredObject]) {
+      const featureParams = this.FeaturesObject[this.centeredObject].featureParams;
+      const hasMercatorCoords = "X" in featureParams;
+
       const coords = [
-        this.FeaturesObject[this.centeredObject].featureParams.longitude,
-        this.FeaturesObject[this.centeredObject].featureParams.latitude,
+        hasMercatorCoords ? featureParams.X : featureParams.longitude,
+        hasMercatorCoords ? featureParams.Y : featureParams.latitude,
       ];
 
       if (this.lockedView) {
-        this.map.getView().setCenter(fromLonLat([...coords]));
+        this.map.getView().setCenter(hasMercatorCoords ? coords : fromLonLat([...coords]));
         this.map.getView().setZoom(this.zoomLevel);
       }
     } else if (this.centeredObject === 'None' && this.lockedView) {
@@ -2295,7 +2512,7 @@ class MapCanvas {
     const alpha1 = coords1[1] * curve;    //широта 1
     const alpha2 = coords2[1] * curve;    //широта 2
     
-    const deltaPhi = phi2  - phi1;
+    const deltaPhi = phi2 - phi1;
     const deltaAlpha = alpha2 - alpha1;
 
     const a = Math.sin(deltaPhi / 2) ** 2 +

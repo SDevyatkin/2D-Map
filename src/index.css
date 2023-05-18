@@ -287,6 +287,20 @@ input {
   width: 150px;
 }
 
+.fields-checkboxes {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 50% 50%;
+  gap: 5px;
+  padding: 0 10px;
+}
+
+.fields-checkboxes input {
+  width: 13px;
+  height: 13px;
+  margin-right: 8px;
+}
+
 .color-input input {
   width: 120px;
 }
@@ -417,6 +431,30 @@ input {
   padding: 0;
 }
 
+.feature-info-modal {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: start;
+  color: #fff;
+  bottom: 10px;
+  right: 10px;
+  width: auto;
+  max-height: 300px;
+  height: auto;
+  padding: 15px 6px;
+  background-color: rgba(70, 70, 75, 0.8);
+  border-radius: 5px;
+  user-select: none;
+  overflow-y: auto;
+}
+
+.feature-info-modal .close-btn {
+  top: 0px;
+  right: 0px;
+}
+
 .modal-wrapper {
   position: fixed;
   display: flex;
@@ -537,12 +575,14 @@ input {
 
 .sidebar::-webkit-scrollbar,
 .modal::-webkit-scrollbar,
+.feature-info-modal::-webkit-scrollbar
 .error-messages::-webkit-scrollbar {
   width: 10px;
 }
 
 .sidebar::-webkit-scrollbar-track,
 .modal::-webkit-scrollbar-track,
+.feature-info-modal::-webkit-scrollbar-track,
 .error-messages::-webkit-scrollbar-track {
   background: #F1F1F1;
   border-radius: 5px;
@@ -550,6 +590,7 @@ input {
 
 .sidebar::-webkit-scrollbar-thumb,
 .modal::-webkit-scrollbar-thumb,
+.feature-info-modal::-webkit-scrollbar-thumb,
 .error-messages::-webkit-scrollbar-thumb {
   background: #888;
   border-radius: 5px;
@@ -699,28 +740,6 @@ input {
 
 .table-row div:not(:last-of-type) {
   border-right: 1px solid #000;
-}
-
-.feature-info-modal {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: center;
-  color: #fff;
-  bottom: 10px;
-  right: 10px;
-  width: 200px;
-  height: auto;
-  padding: 15px 6px;
-  background-color: rgba(70, 70, 75, 0.8);
-  border-radius: 5px;
-  user-select: none;
-}
-
-.feature-info-modal .close-btn {
-  top: 0px;
-  right: 0px;
 }
 
 .new-sidebar {

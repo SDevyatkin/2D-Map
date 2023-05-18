@@ -15,6 +15,8 @@ import { subscribe_struct_info, subscribe_struct_infoT } from '../m-b/msg/subscr
 import { subscribe_struct_info_resp } from '../m-b/msg/subscribe_struct_info_resp';
 import { writeFile, writeFileSync } from 'fs';
 
+// const addon = require("../addons/flexbuffer_helper/build/Release/addon.node");
+
 enum ConnectionState {
   N0_CONNECTION,
   FETCH,
@@ -41,11 +43,10 @@ class TcpConnection {
   private builder: flatbuffers.Builder;
   private configureData: ConfigurationData;
 
+  private modelsData: Record<string, any> = {};
+  private fieldsHandle: Record<string, Record<number, string>> = {};
+
   constructor() {
-    // this.testTcpConnection = net.createConnection(
-    //   { port: 4242 },
-    //   () => Logger.info(`Тестовое TCP соединение через порт ${4242} установлено.`)
-    // );
 
     this.csmTcpConnection = net.createConnection(
       {
@@ -57,7 +58,6 @@ class TcpConnection {
     );
 
     this.csmTcpConnection.on('data', (data: Buffer) => {
-      console.log(data.toString());
       const { response } = JSON.parse(data.toString()) as ConfigurationDataResponse;
       
       if ('size' in response) {
@@ -67,6 +67,9 @@ class TcpConnection {
       if ('System_settings' in response) {
         this.configureData = response;
         
+        this.modelsData["craft"] = {};
+        this.fieldsHandle["craft"] = {};
+
         for (let setting of response['System_settings']) {
           if (!('value' in setting)) continue;
           
@@ -82,16 +85,12 @@ class TcpConnection {
 
         if (this.MB_HOST && this.MB_PORT) {
           this.setMBConnection();
-          // console.log(`Host: ${this.MB_HOST}\nPort: ${this.MB_PORT}`);
-          // this.getModuleList();
         }
       }
 
-      // console.log(response);
     }); 
 
     this.csmConnectionState = this.fetchRequest();
-    // this.getModuleList();
   }
 
   private getModuleList() {
@@ -129,8 +128,6 @@ class TcpConnection {
     this.mbTcpConnection = net.createConnection(
       {
         host: this.MB_HOST,
-        // host: '127.0.0.1',
-        // port: 42111,
         port: this.MB_PORT,
       },
       () => {
@@ -145,24 +142,12 @@ class TcpConnection {
         this.builder.createString('2d_map'),
         this.builder.createString(''),
       );
-      // const reflectAttributesOffset = reflect_attributes.createreflect_attributes(
-      //   this.builder,
-      //   7,
-      //   3,
-      //   20,
-      //   this.builder.createString('maximus prime'),
-      // );
-
-      // builder.finish(joinSystemOffset);
 
       const messageOffset = Message.createMessage(this.builder, Messages_type.join_system, joinSystemOffset);
-      // const messageOffset = Message.createMessage(this.builder, Messages_type.reflect_attributes, reflectAttributesOffset);
+    
       this.builder.finish(messageOffset);
       const buffer = this.builder.asUint8Array();
 
-      // console.log(this.builder);
-      // console.log('*'.repeat(50));
-      // console.log(this.builder.createString('maximus prime'))
       this.mbTcpConnection.write(buffer);
     }, 228);
 
@@ -176,81 +161,24 @@ class TcpConnection {
           this.subscribeStructInfo();
           break;
         case 'subscribe_struct_info_resp':
-          // const subscribeInfo = subscribe_struct_info_resp
-          //   .getRootAssubscribe_struct_info_resp(
-          //     new flatbuffers.ByteBuffer(data)
-          //   );
+          // @ts-ignore
+          const handles = message.unpack().data.fieldsHandle;
           
-          console.log(message.unpack().data)
-            // console.log(subscribeInfo.incorrectRequest());
-            // console.log(
-            //   `fieldsHandle: ${subscribeInfo.fieldsHandle(subscribeInfo.bb_pos)}\n` +
-            //   `fieldsHandleArray: ${subscribeInfo.fieldsHandleArray()}\n` +
-            //   `fieldsHandleLength: ${subscribeInfo.fieldsHandleLength()}\n` +
-            //   `incorrectRequest ${subscribeInfo.incorrectRequest()}\n` +
-            //   `internalError: ${subscribeInfo.internalError()}\n` +
-            //   `objectHandle: ${subscribeInfo.objectHandle()}\n` +
-            //   `status: ${subscribeInfo.status()}\n` +
-            //   `structHandle: ${subscribeInfo.structHandle()}`
-            // );
-            // console.log('Subscribe info ', subscribeInfo.objectHandle(), subscribeInfo.structHandle(), subscribeInfo.incorrectRequest());
-          // message.bb.bytes().forEach((byte) => console.log(byte));
+          for (let i in handles) {
+            console.log(i);
+          }
+
           break;
         default:
-          // this.testTcpConnection.write(new Uint8Array(data));
-          // console.log(new Uint8Array(data))
-          // const ar16 = new Uint16Array(data.buffer, data.byteOffset, data.byteLength / Uint16Array.BYTES_PER_ELEMENT);
-          // console.log(message.data({}));
-          // console.log(new TextDecoder('UTF-8').decode(message.bb.bytes()));
-          // const msg = Message.createMessage(this.builder, Messages_type.reflect_attributes, message.bb_pos);
-          // this.builder.finish(msg);
-          // const chars = message.unpack().data['values'].map(v => String.fromCharCode(v))
-          // console.log(new TextDecoder().decode(Uint8Array.from(message.unpack().data['values'])));
-          let reflAttrs = reflect_attributes.getRootAsreflect_attributes(message.bb)
           let values = message.unpack().data['values'];
-          const ref = flexbuffers.toReference(message.bb.bytes().buffer)
-          // const flexbuffer = flexbuffers.encode(values, values.length);
-          const keys = Object.keys(ref);
-
           
-          console.log('***************************************************');
-          console.log(message.unpack().data['values'])
+          values = new Uint8Array(values);
 
-          writeFileSync('./flexbuffer_test.bin', Buffer.from(values), { encoding: 'binary' });
-          // console.log(this.configureData.Output[0].fields.map(f => f.field_name));
-          // console.log(message.unpack().data['values'].map(v => parseInt(v, 16)));
-          // console.log(message.bb_pos);
-          // console.log(reflAttrs.unpack())
-
-          // for (let i = 0; i < ref.length(); i++) {
-          //   console.log(ref);
-          // }
-          // console.log(values);
-          // console.log(values.filter((_, i) => (i % 2 !== 0 && values[i - 1] > 0 && values[i - 1] < 10) || (i % 2 === 0 && values[i] > 0 && values[i] < 10)));
-          // const reflectObj = new reflect_attributesT();
-          // const reflectAttributes = reflect_attributes.getRootAsreflect_attributes(new flatbuffers.ByteBuffer(data));
-          // reflectAttributes.unpackTo(reflectObj)
-
-          // console.log(reflectObj.objectHandle, reflectObj.structHandle);
-          // console.log(
-          //   reflectAttributes.objectHandle(), 
-          //   reflectAttributes.structHandle(), 
-          //   reflectAttributes.timeStamp(),
-          //   reflectAttributes.valuesArray(),
-          //   reflectAttributes.values(0),
-          //   reflectAttributes.valuesArray(),
-          //   reflectAttributes.valuesLength(),
-          // );
-          // console.log(reflectAttributes.objectHandle(), reflectAttributes.structHandle());
+          let data = flexbuffers.toObject(values.buffer) as Array<any>;
+          data = data.map(item => typeof item === "bigint" ? Number(item) : item);
+          console.log(data)
           break;
       }
-      // console.log(message.dataType());
-      // join_system_resp.createjoin_system_resp(
-      //   this.builder,
-      //   message.data
-      // );
-      // console.log(new TextDecoder().decode(new Uint8Array(message.bb.bytes())));
-      // Message.createMessage(this.builder, message.dataType(), bufferedData);
     });
 
     this.mbTcpConnection.on('close', () => console.log('MB TCP conn closed'));
@@ -260,7 +188,13 @@ class TcpConnection {
     this.builder.clear();
 
     const outputData = this.configureData.Output[0];
-    const fields = outputData.fields.map((field) => this.builder.createString(field.field_name));
+    const fields = outputData.fields.map((field) => {
+      const fieldName = field.field_name;
+      this.modelsData["craft"][fieldName] = undefined;
+
+      return this.builder.createString(fieldName)
+    });
+    
 
     const fieldsVector = subscribe_struct_info.createFieldsVector(this.builder, fields);
     subscribe_struct_info.startFieldsVector(this.builder, fields.length);
@@ -278,16 +212,9 @@ class TcpConnection {
 
     const buffer = this.builder.asUint8Array();
 
-    // writeFile('test.bin', buffer, { encoding: 'binary' }, (err) => {
-    //   if (err) throw err;
-    //   console.log('saved');
-    // });
     this.mbTcpConnection.write(buffer);
   }
 
-  log() {
-    // console.log(this.schema.needHandle());
-  }
 }
 
 export const TCP = new TcpConnection();

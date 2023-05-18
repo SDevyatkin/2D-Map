@@ -12,10 +12,7 @@ import cookieParser from 'cookie-parser';
 import { v4 } from 'uuid';
 import Logger from './Logger';
 import { TCP } from './TcpConnection/TcpConnection';
-
-// const addon = require("./addon/build/Release/addon");
-
-// console.log(addon.my_function());
+import { CASIntegration } from './TcpConnection/CASConnection';
 
 interface IClients {
   [key: number]: WebSocket;
@@ -29,7 +26,8 @@ let clientID: number = 1;
 let routesID: number[] = [];
 const routesByMap: IRoutesByMap = {};
 const distancesByMap: IDistancesByMap = {};
-const TcpConnection = TCP;
+// const TcpConnection = TCP;
+const CASConnection = new CASIntegration();
 // const logger = new Logger();
 fs.writeFileSync(Logger.targetFile, '');
 
@@ -84,56 +82,56 @@ let block = false;
 
 fs.writeFileSync('./JSON/Routes.json', JSON.stringify({}));
 
-const getData = () => {
-    const serverData = dgram.createSocket('udp4');
+// const getData = () => {
+//     const serverData = dgram.createSocket('udp4');
 
-    serverData.on('error', () => {
-      Logger.warn('Соединение UDP разорвано')
-      serverData.close()
-    });
+//     serverData.on('error', () => {
+//       Logger.warn('Соединение UDP разорвано')
+//       serverData.close()
+//     });
 
-    serverData.on('message', (message) => {
-        try {
-            Logger.info('Данные получены UDP');
-            const parsedMessage = JSON.parse(message.toString());
-            // console.log(parsedMessage);
+//     serverData.on('message', (message) => {
+//         try {
+//             Logger.info('Данные получены UDP');
+//             const parsedMessage = JSON.parse(message.toString());
+//             // console.log(parsedMessage);
 
-            parsedMessage.data.forEach((item, i) => jsonData[parsedMessage.data[i].id] = item);
+//             parsedMessage.data.forEach((item, i) => jsonData[parsedMessage.data[i].id] = item);
 
-            // console.log('-------------------------------------------');
-            const keys = Object.keys(socketList);
-            if (!block) {
-                const routes = saveRoutes(jsonData);
-                Object.keys(routes).map(key => {
-                  if (routesID.indexOf(Number(key)) === -1) {
-                    delete routes[key];
-                  }
-                });
-                for (let i = 0; i < keys.length; i++) {
-                    // console.log(keys[i]);
-                    sendData(jsonData, routes, socketList[keys[i]]);
-                }
-                block = true;
-                setTimeout(() => { 
-                  block = false;
-                }, socketMapDataFreq);
-            }
-            Logger.info(`Данные UDP обработаны`);
+//             // console.log('-------------------------------------------');
+//             const keys = Object.keys(socketList);
+//             if (!block) {
+//                 const routes = saveRoutes(jsonData);
+//                 Object.keys(routes).map(key => {
+//                   if (routesID.indexOf(Number(key)) === -1) {
+//                     delete routes[key];
+//                   }
+//                 });
+//                 for (let i = 0; i < keys.length; i++) {
+//                     // console.log(keys[i]);
+                    // sendData(jsonData, routes, socketList[keys[i]]);
+//                 }
+//                 block = true;
+//                 setTimeout(() => { 
+//                   block = false;
+//                 }, socketMapDataFreq);
+//             }
+//             Logger.info(`Данные UDP обработаны`);
 
-        } catch (error) {
-            Logger.warn(`Не получилось обработать данные UDP: ${error.message}`)
-            // console.log(error.message);
-        }
-    });
+//         } catch (error) {
+//             Logger.warn(`Не получилось обработать данные UDP: ${error.message}`)
+//             // console.log(error.message);
+//         }
+//     });
 
-    serverData.on('listening', () => {
-        const address = serverData.address();
-        Logger.info(`UDP listener is running on port ${address.port}`);
-        // console.log(`UDP listener is running on port ${address.port}`);
-    });
+//     serverData.on('listening', () => {
+//         const address = serverData.address();
+//         Logger.info(`UDP listener is running on port ${address.port}`);
+//         // console.log(`UDP listener is running on port ${address.port}`);
+//     });
 
-    serverData.bind(50050);
-};
+//     serverData.bind(50050);
+// };
 
 // File System
 
@@ -145,20 +143,22 @@ fs.readdir(imagesFolder, (_, files) => {
   Logger.info('Считан список изображений для графических объектов');
 });
 
-const saveRoutes = (data: IFeatures) => {
+export const saveRoute = (feature: any) => {
   const routes = JSON.parse(fs.readFileSync('./JSON/Routes.json', 'utf-8'));
 
-  for (let id of Object.keys(data)) {
-    if (routes.hasOwnProperty(id)) {
-      const lastPoint = routes[id][routes[id].length - 1]
+  const featureID = feature.id;
+  const hasMercator = "X" in feature;
+  const coords = hasMercator ? [feature.X, feature.Y] : [feature.latitude, feature.longitude];
 
-      if (!(lastPoint[0] === data[id].latitude && lastPoint[1] === data[id].longitude)) {
-        routes[id].push([data[id].latitude, data[id].longitude]);
-      }
-      
-    } else {
-      routes[id] = [[data[id].latitude, data[id].longitude]];
+  if (routes.hasOwnProperty(featureID)) {
+    const lastPoint = routes[featureID][routes[featureID].length - 1]
+
+    if (!(lastPoint[0] === coords[0] && lastPoint[1] === coords[1])) {
+      routes[feature].push(coords);
     }
+    
+  } else {
+    routes[featureID] = [coords];
   }
 
   fs.writeFileSync('./JSON/Routes.json', JSON.stringify(routes));
@@ -616,23 +616,22 @@ app.post('/MapViewSettings', (request: express.Request, response: express.Respon
   }
 });
 
-setTimeout(getData, 0);
+// setTimeout(getData, 0);
 
 // WebSocket Server ===================================================================
 
-const sendData = (features: IFeatures, routes: IRoutes, wsClient: WebSocket | null) => {
+export const sendData = (features: any[], routes: IRoutes) => {
   const sub = [];
-  
-  for (let key of Object.keys(features)) {
-    sub.push([key, features[key].altitude])
-  }
 
   const idsByAltitude = sub.sort((a, b) => b[1] - a[1]).map(item => item[0]);
 
   const data = { features, idsByAltitude, routes, routesByMap, distancesByMap };
 
   Logger.info('Отправлен пакет данных через WebSocket');
-  wsClient.send(JSON.stringify(data));
+  
+  Object.values(socketList).forEach((client) => {
+    client.send(JSON.stringify(data));
+  });
 }
 
 const wsServer = new ws.Server({ port: 3001 });
@@ -644,6 +643,7 @@ wsServer.on('listening', (data) => {
 wsServer.on('error', () => Logger.error('Ошибка в работе WebSocket сервера'));
 
 function onConnect(wsClient: WebSocket) {
+
   const wsClientId = clientID;
 
   // console.log(wsClientId, clientID, socketList);
@@ -653,6 +653,7 @@ function onConnect(wsClient: WebSocket) {
   // console.log(socketList)
   clientID++;
 
+  // CASConnection.addWSClient(wsClient);
   Logger.info('connection up');
   // console.log('connection up');
 

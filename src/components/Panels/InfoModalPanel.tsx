@@ -5,6 +5,8 @@ import { InfoModalPlacement, setFeatureInfoID, setInfoModalSettings } from '../.
 import { RootState } from '../../store/store';
 import { InstrumentsButton } from '../../StyledButton';
 import Select from '../Select';
+import arrow from '../../assets/arrow.png';
+import FieldsDropdown from './FieldsDropdown';
 
 const placementValues: { [key: string]: InfoModalPlacement } = {
   'Фиксировать': 'fixed',
@@ -15,12 +17,13 @@ const InfoModalPanel: FC = () => {
 
   const dispatch = useDispatch();
 
-  const { Map, MapID, pinObjects, object, placement } = useSelector((state: RootState) => ({
+  const { Map, MapID, pinObjects, object, placement, fields } = useSelector((state: RootState) => ({
     Map: state.Map.maps[`map${state.Map.selectedMap}`],
     MapID: Number(state.Map.selectedMap),
     pinObjects: state.pinObjects.objects,
     object: state.sidebar[Number(state.Map.selectedMap)].infoModalSettings.object,
     placement: state.sidebar[Number(state.Map.selectedMap)].infoModalSettings.placement,
+    fields: state.featuresData.fields[state.sidebar[Number(state.Map.selectedMap)].infoModalSettings.object],
   }));
 
   const [placementValue, setPlacementValue] = useState<string>('Фиксировать');
@@ -81,7 +84,7 @@ const InfoModalPanel: FC = () => {
     }
     deleteInfoModals(`map${MapID}`);
   };
-;
+
   return (
     <div id='info-modal-panel' className='sidebar-panel' style={{ top: '350px' }}>
       <h2>Вывод информации</h2>
@@ -93,6 +96,10 @@ const InfoModalPanel: FC = () => {
         <span>Расположение</span>
         <Select data={Object.keys(placementValues)} value={placementValue} noneField={''} onChange={handlePlacement} />
       </div>
+      {
+        (!!fields && object !== "None") &&
+        <FieldsDropdown fields={fields} object={object} />
+      }
       <div className='buttons'>
         <InstrumentsButton disabled={buttonDisabled} onClick={addInfoModal}>построить</InstrumentsButton>
         <InstrumentsButton onClick={clearInfoModals}>очистить</InstrumentsButton>
