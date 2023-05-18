@@ -8,11 +8,7 @@ WORKDIR /webmap
 COPY . .
 
 CMD ["bash", "start.sh"]
-# CMD ["bash", "runClient.sh"]
 
-# CMD ["cd server", "npm run server", "cd ..", "npm start"]
 
-# RUN cd server && \
-#   npm run server && \
-#   cd .. && \
-#   npm start
+# docker build -t 2dmap .
+# docker run -it --name map2d --network host 2dmap 
