@@ -54,11 +54,14 @@ const defaultSizes: IDivSize[] = [
 ];
 
 const MapsWrapper: FC<Props> = ({ shift }) => {
+  
+  const selectedMap = useSelector((state: RootState) => state.Map.selectedMap);
+  const widgetsLayout = useSelector((state: RootState) => state.widgetSettings.widgetsLayout);
 
-  const { selectedMap, widgetsLayout } = useSelector((state: RootState) => ({
-    selectedMap: state.Map.selectedMap,
-    widgetsLayout: state.widgetSettings.widgetsLayout,
-  }));
+  // const { selectedMap, widgetsLayout } = useSelector((state: RootState) => ({
+  //   selectedMap: state.Map.selectedMap,
+  //   widgetsLayout: state.widgetSettings.widgetsLayout,
+  // }));
 
   const [mapWidth, setMapWidth] = useState<number>(clientWidth - 2.5);
   const [mapHeight, setMapHeight] = useState<number>(clientHeight - 2.5);

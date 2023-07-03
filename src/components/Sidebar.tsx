@@ -32,10 +32,13 @@ const Sidebar: FC<SidebarProps> = ({ opened, handleSidebar }) => {
 
   const dispatch = useDispatch();
 
-  const { selectedMap, errorLogOpened } = useSelector((state: RootState) => ({
-    selectedMap: state.Map.selectedMap,
-    errorLogOpened: state.errorLog.opened,
-  }));
+  const selectedMap = useSelector((state: RootState) => state.Map.selectedMap);
+  const errorLogOpened = useSelector((state: RootState) => state.errorLog.opened);
+
+  // const { selectedMap, errorLogOpened } = useSelector((state: RootState) => ({
+  //   selectedMap: state.Map.selectedMap,
+  //   errorLogOpened: state.errorLog.opened,
+  // }));
 
   useEffect(() => {
     errorLogOpened && setCommonModal(false);

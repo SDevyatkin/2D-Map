@@ -6,7 +6,7 @@ export interface FeaturesDataState {
   fields: Record<string, Record<string, boolean>>;
 }
 
-const DEFAULT_FIELDS = ["id", "type", "X", "Y", "Z", "latitude", "longitude", "altitude", "Psi"];
+const DEFAULT_FIELDS = ["id", "type", "X", "Y", "Z", "lat", "lon", "altitude", "yaw", "parentID"];
 
 const initialState: FeaturesDataState = { 
   data: {},

@@ -14,9 +14,7 @@ const ErrorLog: FC<Props> = ({ handleClose }) => {
 
   const dispatch = useDispatch();
 
-  const { errors } = useSelector((state: RootState) => ({
-    errors: state.errorLog.mergedErrors,
-  }));
+  const errors = useSelector((state: RootState) => state.errorLog.mergedErrors);
 
   // useEffect(() => {
   //   setInterval(() => {

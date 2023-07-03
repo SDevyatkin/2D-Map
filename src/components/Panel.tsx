@@ -1,4 +1,4 @@
-import { FC, MouseEvent, useState } from 'react';
+import { FC, MouseEvent, memo, useState } from 'react';
 import logo from '../assets/logo.png';
 import menu from '../assets/burger-menu.png';
 import win1 from '../assets/1win.svg';
@@ -24,38 +24,39 @@ const Panel: FC<PanelProps> = ({ handleSidebar }) => {
 
   const dispatch = useDispatch();
 
-  const [iconCreationMode, setIconCreationMode] = useState<boolean>(false);
-  const [typeSettingsMode, setTypeSettingsMode] = useState<boolean>(false);
-  const [widgetSettingsMode, setWidgetSettingsMode] = useState<boolean>(false);
+  // const [iconCreationMode, setIconCreationMode] = useState<boolean>(false);
+  // const [typeSettingsMode, setTypeSettingsMode] = useState<boolean>(false);
+  // const [widgetSettingsMode, setWidgetSettingsMode] = useState<boolean>(false);
   
-  const { errorLogOpened, signaling } = useSelector((state: RootState) => ({ 
-    errorLogOpened: state.errorLog.opened,
-    signaling: state.errorLog.signaling,
-  }))
+  const errorLogOpened = useSelector((state: RootState) => state.errorLog.opened);
+  const signaling = useSelector((state: RootState) => state.errorLog.signaling);
+  // const { errorLogOpened, signaling } = useSelector((state: RootState) => ({ 
+  //   errorLogOpened: state.errorLog.opened,
+  //   signaling: state.errorLog.signaling,
+  // }))
   // const [freqChangingMode, setFreqChangingMode] = useState<boolean>(false);
 
-  const handleIconCreationMode = () => {
-    setTypeSettingsMode(false);
-    setWidgetSettingsMode(false);
-    // setFreqChangingMode(false);
-    setIconCreationMode(true);
-  };
+  // const handleIconCreationMode = () => {
+  //   setTypeSettingsMode(false);
+  //   setWidgetSettingsMode(false);
+  //   // setFreqChangingMode(false);
+  //   setIconCreationMode(true);
+  // };
 
-  const handleTypeSettingsMode = () => {
-    setIconCreationMode(false);
-    setWidgetSettingsMode(false);
-    // setFreqChangingMode(false);
-    setTypeSettingsMode(true);
-  };
+  // const handleTypeSettingsMode = () => {
+  //   setIconCreationMode(false);
+  //   setWidgetSettingsMode(false);
+  //   // setFreqChangingMode(false);
+  //   setTypeSettingsMode(true);
+  // };
 
-  const handleWidgetMode = () => {
-    setIconCreationMode(false);
-    setTypeSettingsMode(false);
-    setWidgetSettingsMode(state => !state);
-  };
+  // const handleWidgetMode = () => {
+  //   setIconCreationMode(false);
+  //   setTypeSettingsMode(false);
+  //   setWidgetSettingsMode(state => !state);
+  // };
 
   const handleErrorLogModal = () => {
-    console.log(errorLogOpened);
     dispatch(setOpened(!errorLogOpened));
   };
 
@@ -65,10 +66,11 @@ const Panel: FC<PanelProps> = ({ handleSidebar }) => {
   //   setFreqChangingMode(true);
   // };
 
-  const offIconCreationMode = () => { setIconCreationMode(false) };
-  const offTypeSettingsMode = () => { setTypeSettingsMode(false) };
-  const offWidgetSettingsMode = () => { setWidgetSettingsMode(false) };
+  // const offIconCreationMode = () => { setIconCreationMode(false) };
+  // const offTypeSettingsMode = () => { setTypeSettingsMode(false) };
+  // const offWidgetSettingsMode = () => { setWidgetSettingsMode(false) };
 
+  console.log("Panel")
   return (
     <>
       <div className='header'>
@@ -130,4 +132,4 @@ const Panel: FC<PanelProps> = ({ handleSidebar }) => {
   );
 };
 
-export default Panel;
+export default memo(Panel);

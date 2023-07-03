@@ -8,16 +8,12 @@ import { InstrumentsButton } from '../../StyledButton';
 import Select from '../Select';
 
 const DrawingPanel: FC = () => {
-
   const dispatch = useDispatch();
 
-  const { Map, MapID, drawingModes, drawingMode } = useSelector((state: RootState) => ({
-    Map: state.Map.maps[`map${state.Map.selectedMap}`],
-    MapID: Number(state.Map.selectedMap),
-    drawingModes: state.drawingSettings.options,
-    drawingMode: state.sidebar[Number(state.Map.selectedMap)].drawingMode,
-    // selectedDrawingMode: state.drawingSettings.selected,
-  }));
+  const Map = useSelector((state: RootState) => state.Map.maps[`map${state.Map.selectedMap}`]);
+  const MapID = useSelector((state: RootState) => Number(state.Map.selectedMap));
+  const drawingModes = useSelector((state: RootState) => state.drawingSettings.options);
+  const drawingMode = useSelector((state: RootState) => state.sidebar[Number(state.Map.selectedMap)].drawingMode);
 
   const onChange = (event: ChangeEvent<HTMLSelectElement>) => {
     // dispatch(selectDrawingMode(event.target.value));

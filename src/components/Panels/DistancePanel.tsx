@@ -8,20 +8,25 @@ import Select from '../Select';
 import ColorInput from './ColorInput';
 
 const DistancePanel: FC = () => {
-
   const dispatch = useDispatch();
 
   const [colorInput, setColorInput] = useState<string>('');
   const [buttonDisabled, setButtonDisabled] = useState<boolean>(true);
 
-  const { Map, MapID, pinObjects, object1, object2, color } = useSelector((state: RootState) => ({
-    Map: state.Map.maps[`map${state.Map.selectedMap}`],
-    MapID: Number(state.Map.selectedMap),
-    pinObjects: state.pinObjects.objects,
-    object1: state.sidebar[Number(state.Map.selectedMap)].distanceSettings.object1,
-    object2: state.sidebar[Number(state.Map.selectedMap)].distanceSettings.object2,
-    color: state.sidebar[Number(state.Map.selectedMap)].distanceSettings.color,
-  }));
+  const Map = useSelector((state: RootState) => state.Map.maps[`map${state.Map.selectedMap}`]);
+  const MapID = useSelector((state: RootState) => Number(state.Map.selectedMap));
+  const pinObjects = useSelector((state: RootState) => state.pinObjects.objects);
+  const object1 = useSelector((state: RootState) => state.sidebar[Number(state.Map.selectedMap)].distanceSettings.object1);
+  const object2 = useSelector((state: RootState) => state.sidebar[Number(state.Map.selectedMap)].distanceSettings.object2);
+  const color = useSelector((state: RootState) => state.sidebar[Number(state.Map.selectedMap)].distanceSettings.color);
+  // const { Map, MapID, pinObjects, object1, object2, color } = useSelector((state: RootState) => ({
+  //   Map: state.Map.maps[`map${state.Map.selectedMap}`],
+  //   MapID: Number(state.Map.selectedMap),
+  //   pinObjects: state.pinObjects.objects,
+  //   object1: state.sidebar[Number(state.Map.selectedMap)].distanceSettings.object1,
+  //   object2: state.sidebar[Number(state.Map.selectedMap)].distanceSettings.object2,
+  //   color: state.sidebar[Number(state.Map.selectedMap)].distanceSettings.color,
+  // }));
 
   useEffect(() => {
     setButtonDisabled(object1 === 'None' || object2 === 'None');

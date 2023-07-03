@@ -1,16 +1,16 @@
-import { CASIntegration } from './CASConnection';
+import { MBConnection } from './SoftwareModules/MBConnection';
 
 type MakeConnection = (...args: any[]) => void;
 type MakeConnectionParams = Parameters<MakeConnection>;
-type Context = CASIntegration;
+type Context = MBConnection;
 
 export class ConnectionInterval {
 
   private intervalConnect: NodeJS.Timer;
   private makeConnection: MakeConnection;
-  private makeConnectionParams: MakeConnectionParams;
+  private makeConnectionParams?: MakeConnectionParams;
 
-  constructor(ctx: Context, makeConnection: MakeConnection, params: MakeConnectionParams) {
+  constructor(ctx: Context, makeConnection: MakeConnection, params: MakeConnectionParams = []) {
     this.makeConnection = makeConnection.bind(ctx);
     this.makeConnectionParams = params;
   }
@@ -23,7 +23,7 @@ export class ConnectionInterval {
     }, 5000);
   }
 
-  public clearIntervalCoonect() {
+  public clearReconnectionInterval() {
     if (!this.intervalConnect) return;
 
     clearInterval(this.intervalConnect);

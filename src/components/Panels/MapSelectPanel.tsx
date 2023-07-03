@@ -10,14 +10,11 @@ interface Props {
 }
 
 const MapSelectPanel: FC<Props> = ({ onClose }) => {
-
   const dispatch = useDispatch();
 
-  const { maps, selectedMap, widgetsLayout } = useSelector((state: RootState) => ({
-    maps: Object.keys(state.Map.maps).map(id => id.slice(3)),
-    selectedMap: state.Map.selectedMap,
-    widgetsLayout: state.widgetSettings.widgetsLayout,
-  }));
+  const maps = useSelector((state: RootState) => state.Map.maps);
+  const selectedMap = useSelector((state: RootState) => state.Map.selectedMap);
+  const widgetsLayout = useSelector((state: RootState) => state.widgetSettings.widgetsLayout);
 
   // const handleMap = (event: ChangeEvent<HTMLSelectElement>) => {
   //   dispatch(selectMap(event.target.value));
@@ -46,7 +43,7 @@ const MapSelectPanel: FC<Props> = ({ onClose }) => {
         <Select data={maps} value={selectedMap} noneField='' onChange={handleMap} />
       </div> */}
       {
-        maps.filter(m => Number(m) <= Number(widgetsLayout[0])).map(m => (
+        Object.keys(maps).map(id => id.slice(3)).filter(m => Number(m) <= Number(widgetsLayout[0])).map(m => (
           <StyledButton 
             key={m}
             isactive={m === selectedMap}

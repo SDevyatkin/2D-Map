@@ -16,8 +16,12 @@ export const pinObjectsSlice = createSlice({
   initialState,
   reducers: {
     changePinObjects: (state, action: PayloadAction<number[]>) => {
-
-      state.objects = action.payload;
+      if (
+        action.payload.length !== state.objects.length ||
+        action.payload.some((pin) => state.objects.findIndex((obj) => obj === pin) === -1)
+      ) {
+        state.objects = action.payload;
+      }
     },
 
     selectPinObject: (state, action: PayloadAction<number>) => {

@@ -1,3 +1,5 @@
+import { IRoutes } from '../interfaces';
+
 interface SectionData {
   tr_name: string;
   discribe: string;
@@ -16,8 +18,49 @@ interface SectionDataWithParams extends SectionData {
   params: ReadonlyArray<any>;
 }
 
+export type FieldValue = number | boolean | string;
+
+export interface FieldSource {
+  source_struct_name: string;
+  source_field_name: string;
+  source_object_name: string;
+}
+
+export interface FieldSourceByModule {
+  module: number;
+  field: string;
+  source: FieldSource;
+}
+
+interface Field {
+  field_name: string;
+  tr_name: string;
+  type_name: string;
+  numbers_of_elements: number;
+  discribe: string;
+  init_value: FieldValue;
+  source?: FieldSource;
+}
+
+export interface SubscribtionForHandle {
+  module: number;
+  field: string;
+}
+
+export interface Input {
+  struct_name: string;
+  discribe: string;
+  tr_name: string;
+  wait_all_source: boolean;
+  fields: Field[];
+}
+
+interface Output extends Input {
+  objects: string | string[];
+}
+
 export interface ConfigurationData {
-  Input: ReadonlyArray<any>;
+  Input: ReadonlyArray<Input>;
   Output: ReadonlyArray<any>;
   Sync_mode: ReadonlyArray<(SectionDataWithValue | SectionDataWithParams)>;
   System_settings: ReadonlyArray<(SectionDataWithValue | SectionDataWithParams)>;
@@ -46,6 +89,16 @@ export interface CSMErrorResponse {
   }
 }
 
+export type ObjectsFields = Record<string, Record<string, FieldValue | FieldSource>>;
+
+export interface CSMCallbackData {
+  objectsFields: ObjectsFields;
+  systemSettings: {
+    host: string;
+    port: number;
+  };
+}
+
 export interface SubscribeStructInfoUnpacked {
   status: boolean;
   incorrectRequest: boolean;
@@ -54,3 +107,13 @@ export interface SubscribeStructInfoUnpacked {
   objectHandle: number;
   fieldsHandle: number[];
 }
+
+export interface ModuleData {
+  type: number;
+  parentID: number;
+  lon: number;
+  lat: number;
+  yaw: number;
+}
+
+export type SendData = (features: Record<number, ModuleData>, routes: IRoutes) => void;

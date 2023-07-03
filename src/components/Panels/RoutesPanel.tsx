@@ -12,13 +12,12 @@ const RoutesPanel: FC = () => {
   const dispatch = useDispatch();
 
   const [colorInput, setColorInput] = useState<string>('');
-  const { Map, MapID, pinObjects, object, color } = useSelector((state: RootState) => ({
-    Map: state.Map.maps[`map${state.Map.selectedMap}`],
-    MapID: Number(state.Map.selectedMap),
-    pinObjects: state.pinObjects.objects,
-    object: state.sidebar[Number(state.Map.selectedMap)].routeSettings.object,
-    color: state.sidebar[Number(state.Map.selectedMap)].routeSettings.color,
-  }));
+
+  const Map = useSelector((state: RootState) => state.Map.maps[`map${state.Map.selectedMap}`]);
+  const MapID = useSelector((state: RootState) => Number(state.Map.selectedMap));
+  const pinObjects = useSelector((state: RootState) => state.pinObjects.objects);
+  const object = useSelector((state: RootState) => state.sidebar[Number(state.Map.selectedMap)].routeSettings.object);
+  const color = useSelector((state: RootState) => state.sidebar[Number(state.Map.selectedMap)].routeSettings.color);
 
   const onChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;

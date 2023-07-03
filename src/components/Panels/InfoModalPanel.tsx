@@ -1,5 +1,5 @@
 import { ChangeEvent, FC, useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { shallowEqual, useDispatch, useSelector } from 'react-redux';
 import { deleteInfoModals, saveInfoModal } from '../../api';
 import { InfoModalPlacement, setFeatureInfoID, setInfoModalSettings } from '../../store/sidebarSlice';
 import { RootState } from '../../store/store';
@@ -14,17 +14,14 @@ const placementValues: { [key: string]: InfoModalPlacement } = {
 };
 
 const InfoModalPanel: FC = () => {
-
   const dispatch = useDispatch();
 
-  const { Map, MapID, pinObjects, object, placement, fields } = useSelector((state: RootState) => ({
-    Map: state.Map.maps[`map${state.Map.selectedMap}`],
-    MapID: Number(state.Map.selectedMap),
-    pinObjects: state.pinObjects.objects,
-    object: state.sidebar[Number(state.Map.selectedMap)].infoModalSettings.object,
-    placement: state.sidebar[Number(state.Map.selectedMap)].infoModalSettings.placement,
-    fields: state.featuresData.fields[state.sidebar[Number(state.Map.selectedMap)].infoModalSettings.object],
-  }));
+  const Map = useSelector((state: RootState) => state.Map.maps[`map${state.Map.selectedMap}`]);
+  const MapID = useSelector((state: RootState) => Number(state.Map.selectedMap));
+  const pinObjects = useSelector((state: RootState) => state.pinObjects.objects);
+  const object = useSelector((state: RootState) => state.sidebar[Number(state.Map.selectedMap)].infoModalSettings.object);
+  const placement = useSelector((state: RootState) => state.sidebar[Number(state.Map.selectedMap)].infoModalSettings.placement);
+  const fields = useSelector((state: RootState) => state.featuresData.fields[state.sidebar[Number(state.Map.selectedMap)].infoModalSettings.object]);
 
   const [placementValue, setPlacementValue] = useState<string>('Фиксировать');
   const [buttonDisabled, setButtonDisabled] = useState<boolean>(object === 'None');

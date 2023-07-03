@@ -8,13 +8,13 @@ import { v4 } from 'uuid';
 import getCookie from './getCookie';
 import { pushError } from './store/errorLogSlice';
 
-const PORT = 3002;
+const PORT = 7002;
 export let BASE_URL = `http://localhost:${PORT}`;
 export let USER_ID = '';
+// console.log(`http://${process.env.REACT_APP_API_IP}:${PORT}`);
 
 export const setBaseURL = () => {
-  BASE_URL = `http://192.168.0.110:${PORT}`;
-  console.log(BASE_URL);
+  BASE_URL = `http://${process.env.REACT_APP_API_IP}:${PORT}`;
 };
 
 // const typeErrorCatcher = (error: any) => {
@@ -54,7 +54,6 @@ export const setBaseURL = () => {
 // }
 
 export const testConnection = async () => {
-
   try {
     const hasCookie = document.cookie.includes('user=');
 
@@ -72,7 +71,6 @@ export const testConnection = async () => {
 
     const error = err as Error;
     store.dispatch(pushError(error));
-    console.log(err);
   }
 };
 

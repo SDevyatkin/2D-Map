@@ -51,7 +51,7 @@ const FeatureInfoModal: FC<Props> = ({ divID }) => {
           <div className='feature-info-modal'>
             {
               Object.keys(featureInfo).map((f) => (
-                featureFields[f] ? <div>{f}: { Number.isInteger(featureInfo[f]) ? featureInfo[f] : featureInfo[f].toFixed(3) }</div> : null
+                featureFields[f] ? <div key={`${divID}_${f}`}>{f}: { Number.isInteger(featureInfo[f]) ? featureInfo[f] : featureInfo[f].toFixed(3) }</div> : null
               ))
             }
             <button className='close-btn' onClick={handleClose}>

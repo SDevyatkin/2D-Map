@@ -1,7 +1,7 @@
-import { FC, useEffect, useState } from 'react';
+import { FC, memo, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useDispatch } from 'react-redux';
-import { getSessionSettings, testConnection } from '../../api';
+import { BASE_URL, getSessionSettings, testConnection } from '../../api';
 // import { saveSessionSettings } from '../../api';
 import FeatureInfoModal from '../../FeatureInfoModal';
 import { appendMap } from '../../store/mapSlice';
@@ -15,7 +15,6 @@ interface Props {
 }
 
 const MapCreator: FC<Props> = ({ divID }: Props) => {
-
   const [Map, setMap] = useState<MapCanvas>();
   const [container, setContainer] = useState<HTMLDivElement>();
 

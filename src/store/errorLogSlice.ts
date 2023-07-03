@@ -31,6 +31,7 @@ export const errorLogSlice = createSlice({
   initialState,
   reducers: {
     setOpened: (state, action: PayloadAction<boolean>) => {
+      console.log("setOpened");
       state.opened = action.payload;
 
       if (state.signaling && action.payload) {
@@ -38,6 +39,7 @@ export const errorLogSlice = createSlice({
       }
     },
     pushError: (state, action: PayloadAction<Error>) => {
+      console.log("pushError");
       const currentDate = new Date();
 
       state.errors.push({

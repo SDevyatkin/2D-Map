@@ -59,7 +59,7 @@ export class CASIntegration {
       { host, port, noDelay: true },
       () => {
         this.CSMConnection.end()
-        this.MBConnectionInterval.clearIntervalCoonect();
+        this.MBConnectionInterval.clearReconnectionInterval();
         Logger.info(`TCP соединение ${host}:${port} c ПМ БС установлено.`)
         console.log(this.MBConnection.localPort);
       },

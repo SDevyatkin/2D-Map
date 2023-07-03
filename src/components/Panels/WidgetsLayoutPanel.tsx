@@ -20,10 +20,13 @@ const WidgetsLayoutPanel: FC<Props> = ({ onClose }) => {
 
   const dispatch = useDispatch();
 
-  const { widgetsLayout, maps } = useSelector((state: RootState) => ({
-    widgetsLayout: state.widgetSettings.widgetsLayout,
-    maps: state.Map.maps,
-  }));
+  const widgetsLayout = useSelector((state: RootState) => state.widgetSettings.widgetsLayout);
+  const maps = useSelector((state: RootState) => state.Map.maps);
+
+  // const { widgetsLayout, maps } = useSelector((state: RootState) => ({
+  //   widgetsLayout: state.widgetSettings.widgetsLayout,
+  //   maps: state.Map.maps,
+  // }));
 
   const handleWidgetsLayout = (event: MouseEvent<HTMLButtonElement>) => {
     const layout = event.currentTarget.id as WidgetsLayout;

@@ -1,0 +1,16 @@
+stages:
+  - build
+
+variables:
+  PROJECT_NAME: "2dmap"
+
+build:
+  stage: build
+  image: docker:stable
+  services:
+    - docker:20-dind
+  script:
+    - docker build --no-cache -t $PROJECT_NAME .
+    - docker save $PROJECT_NAME > $PROJECT_NAME.tar
+  only:
+    - master

@@ -92,6 +92,7 @@ interface IUserExtents {
 
 interface IUserExtentsSettings {
   [key: string]: {
+    id: number
     style: Style;
     rotation: number;
   };
@@ -138,6 +139,7 @@ class MapCanvas {
   private FeaturesObject: FeaturesObjectI = {};
   private PolygonsObject: IPolygonsObject = {};
   private MarkersObject: IMarkersObject = {};
+  private fetchedMarkerSettings: boolean = false;
   private idsByAltitude: number[] = [];
   private centeredObject: number | 'None' = 'None';
   private lockedView: boolean = false;
@@ -153,6 +155,7 @@ class MapCanvas {
   private userExtents: IUserExtents = {};
   private userExtentStyles: IUserExtentStyles = {};
   private userExtentSettings: IUserExtentsSettings = {};
+  private userExtentsCounter: number = 0;
   private currentZoom: number = 3;
   private featureFixedInfoID: number = -1;
   private featureBindedInfoIds: number[] = [];
@@ -182,6 +185,7 @@ class MapCanvas {
 
   constructor(divID: string, dispatch: Dispatch) {
     this.map = this.createMap(divID);
+    this.getMarkerSettings();
     this.divID = divID;
     this.dispatch = dispatch;
     const tempExtent = this.getCurrentExtent();
@@ -274,8 +278,6 @@ class MapCanvas {
 
     this.map.addLayer(this.UserExtentsLayer);
     this.UserExtentsLayer.setSource(this.UserExtentsLayerSource);
-
-    this.getMarkerSettings();
 
     // const extentInteraction = new ExtentInteraction({ 
     //   condition: shiftKeyOnly,
@@ -682,8 +684,8 @@ class MapCanvas {
         const id = feature.getId()?.toString().split('_') as string[];
         const [first, second] = [id[0], id[2]].map(i => this.FeaturesObject[Number(i)].featureParams);
 
-        const coords1 = [first.latitude, first.longitude, first.altitude] as [number, number, number];
-        const coords2 = [second.latitude, second.longitude, second.altitude] as [number, number, number];
+        const coords1 = [first.lat, first.lon, first.altitude ? first.altitude : 0] as [number, number, number];
+        const coords2 = [second.lat, second.lon, second.altitude ? second.altitude : 0] as [number, number, number];
 
         const distance = this.calculateDistance(coords1, coords2);
 
@@ -1129,6 +1131,24 @@ class MapCanvas {
       fill: new Fill({
         color: 'rgba(78, 0, 255, 0.4)'
       }),
+      text: new Text({
+        text: String(this.userExtentsCounter + 1),
+        stroke: new Stroke({
+          color: "rgb(0, 0, 0)",
+        }),
+        fill: new Fill({
+          color: "rgb(0, 0, 0)",
+        }),
+        scale: 1.5,
+        backgroundFill: new Fill({
+          color: "rgb(255, 255, 255)",
+        }),
+        padding: [1, 0, 1, 4],
+        backgroundStroke: new Stroke({
+          width: 1,
+          color: "rgb(0, 0, 0)",
+        })
+      }),
     });
 
     const feature = new Feature({});
@@ -1140,12 +1160,14 @@ class MapCanvas {
 
     this.userExtentStyles[id] = style;
     this.userExtentSettings[id] = {
+      id: this.userExtentsCounter + 1,
       style,
       rotation: this.currentRotation,
     };
 
     this.UserExtentsLayerSource.addFeature(feature);
 
+    this.userExtentsCounter++;
     this.leftPosition = 0;
     this.topPosition = 0;
     this.userExtents[id] = extent;
@@ -1326,6 +1348,8 @@ class MapCanvas {
 
     const rgbColor = this.hexToRgb(color);
 
+    const extentId = this.userExtentSettings[featureId].id;
+
     const style = new Style({
       stroke: new Stroke({
         width: 3,
@@ -1333,6 +1357,24 @@ class MapCanvas {
       }),
       fill: new Fill({
         color: rgbColor,
+      }),
+      text: new Text({
+        text: String(extentId),
+        stroke: new Stroke({
+          color: "rgb(0, 0, 0)",
+        }),
+        fill: new Fill({
+          color: "rgb(0, 0, 0)",
+        }),
+        backgroundStroke: new Stroke({
+          width: 1,
+          color: "rgb(0, 0, 0)"
+        }),
+        backgroundFill: new Fill({
+          color: "rgb(255, 255, 255)",
+        }),
+        padding: [1, 0, 1, 4],
+        scale: 1.5,
       }),
     });
 
@@ -1457,7 +1499,7 @@ class MapCanvas {
   public translateView(id: number | 'None') {
     if (id === 'None' || !this.FeaturesObject[id]) return;
 
-    const coords = [this.FeaturesObject[id].featureParams.longitude, this.FeaturesObject[id].featureParams.latitude];
+    const coords = [this.FeaturesObject[id].featureParams.lon, this.FeaturesObject[id].featureParams.lat];
 
     this.centeredObject = id;
     this.map.getView().setCenter(fromLonLat(coords));
@@ -1544,8 +1586,8 @@ class MapCanvas {
     const hasMercatorCoords2 = "X" in featureParams2;
 
     const distanceLine = greatCircle(
-      hasMercatorCoords1 ? toLonLat([featureParams1.X, featureParams1.Y]) : [featureParams1.latitude, featureParams1.longitude],
-      hasMercatorCoords2 ? toLonLat([featureParams2.X, featureParams2.Y]) : [featureParams2.latitude, featureParams2.longitude],
+      hasMercatorCoords1 ? toLonLat([featureParams1.X, featureParams1.Y]) : [featureParams1.lon, featureParams1.lat],
+      hasMercatorCoords2 ? toLonLat([featureParams2.X, featureParams2.Y]) : [featureParams2.lon, featureParams2.lat],
       {
         npoints: 10,
       }
@@ -1856,8 +1898,8 @@ class MapCanvas {
     return new Map({
       layers: [
         new TileLayer({ 
-          // source: this.TileSource,
-          source: new XYZ({ url: 'http://127.0.0.1/tile/{z}/{x}/{y}.png' }),
+          source: this.TileSource,
+          // source: new XYZ({ url: 'http://127.0.0.1/tile/{z}/{x}/{y}.png' }),
           preload: 6,
           useInterimTilesOnError: true,
         }),
@@ -1954,11 +1996,13 @@ class MapCanvas {
     const res = await testConnection();
 
     if (res !== 200) {
+      console.log(`MapCanvas getMarkerSettings Test: ${BASE_URL}`);
       this.getMarkerSettings();
       return;
     }
 
     this.MarkersObject = await getMarkerSettings();
+    this.fetchedMarkerSettings = true;
     // console.log(this.MarkersObject);
   }
 
@@ -1976,7 +2020,7 @@ class MapCanvas {
     
     if ("attached_to" in feature) {
       const parent = this.FeaturesObject[feature.attached_to].featureParams;
-      parentCoord = "X" in parent ? [parent.X, parent.Y] : fromLonLat([parent.longitude, parent.latitude]);
+      parentCoord = "X" in parent ? [parent.X, parent.Y] : fromLonLat([parent.lon, parent.lat]);
     } else if ("default_X" in feature) {
       parentCoord = [feature.default_X, feature.default_Y];
     }
@@ -2000,6 +2044,8 @@ class MapCanvas {
   }
 
   public async updateFeaturesDataNew(features: any[]) {
+    if (!this.fetchedMarkerSettings) return;
+
     if (features.length) {
       this.InfoLayerSource.clear();
 
@@ -2013,11 +2059,12 @@ class MapCanvas {
 
         const featureID = feature.id;
 
-        if (!this.FeaturesObject.hasOwnProperty(feature.id)) {
+        if (!(featureID in this.FeaturesObject)) {
 
+          // console.log(featureID, this.FeaturesObject[featureID]);
           const featurePoint = ("X" in feature) ?
             new Point([feature.X, feature.Y]) :
-            new Point(fromLonLat([feature.longitude, feature.latitude]));
+            new Point(fromLonLat([feature.lon, feature.lat]));
 
           const newFeature = new Feature({
             geometry: featurePoint,
@@ -2049,6 +2096,12 @@ class MapCanvas {
             })
           );
 
+          // if (!this.fetchedMarkerSettings) {
+          //   console.log(`MapCanvas updateFeaturesDataNew Test: ${BASE_URL}`);
+          //   await this.getMarkerSettings();
+          //   this.fetchedMarkerSettings = true;
+          // }
+
           const markerSetting = this.MarkersObject[feature.type];
 
           if (markerSetting) {
@@ -2056,20 +2109,24 @@ class MapCanvas {
               new Icon({
               opacity: markerSetting.alpha,
               scale: markerSetting.size,
-              src: `${BASE_URL}/public/images/${markerSetting.image}`,
-              rotation: feature.Psi ? feature.Psi / 57.2958 + this.currentRotation : 0,
+              src: `./images/${markerSetting.image}`,
+              // src: `${BASE_URL}/public/img/${markerSetting.image}`,
+              rotation: feature.yaw / 57.2958 + this.currentRotation,
+              // rotation: feature.Psi ? feature.Psi / 57.2958 + this.currentRotation : 0,
             }));
           } else {
             newFeatureStyle.setImage(
               new Icon({
               opacity: 1,
               scale: 0.15,
-              src: `${BASE_URL}/public/images/question.png`,
-              rotation: feature.Psi ? feature.Psi / 57.2958 + this.currentRotation : 0,
+              src: `./images/question.png`,
+              // src: `${BASE_URL}/public/img/question.png`,
+              rotation: feature.yaw / 57.2958 + this.currentRotation,
             }));
           }
 
           newFeature.setStyle(newFeatureStyle);
+
 
           this.ObjectsLayerSource.addFeature(newFeature);
 
@@ -2081,16 +2138,15 @@ class MapCanvas {
               ? this.FeaturesObject[featureID].attachedFeatures 
               : [],
           }
+
         } else {
           this.FeaturesObject[featureID].featureParams = feature;
 
           ("X" in feature) ? 
             this.moveObjectLayerFeature(featureID, feature.X, feature.Y, true) :
-            this.moveObjectLayerFeature(featureID, feature.longitude, feature.latitude, false);
+            this.moveObjectLayerFeature(featureID, feature.lon, feature.lat, false);
 
-          if ("Psi" in feature) {
-            this.FeaturesObject[featureID].style.getImage().setRotation((feature.Psi / 57.2958) + this.currentRotation)
-          }
+          this.FeaturesObject[featureID].style.getImage().setRotation((feature.yaw / 57.2958) + this.currentRotation);
 
         }
 
@@ -2098,7 +2154,7 @@ class MapCanvas {
           const infoFeature = new Feature({});
           const infoFeatureGeometry = ("X" in feature) ?
             new Point([feature.X, feature.Y]) :
-            new Point(fromLonLat([feature.longitude, feature.latitude]));
+            new Point(fromLonLat([feature.lon, feature.lat]));
 
           infoFeature.setGeometry(infoFeatureGeometry);
 
@@ -2195,7 +2251,8 @@ class MapCanvas {
               new Icon({
               opacity: settings.alpha,
               scale: settings.size,
-              src: `${BASE_URL}/public/images/${settings.image}`,
+              src: `./images/${settings.image}`,
+              // src: `${BASE_URL}/public/images/${settings.image}`,
               rotation: features[key].yaw / 57.2958 + this.currentRotation,
             }));
           } else {
@@ -2203,7 +2260,8 @@ class MapCanvas {
               new Icon({
               opacity: 1,
               scale: 0.15,
-              src: `${BASE_URL}/public/images/question.png`,
+              src: `./images/question.png`,
+              // src: `${BASE_URL}/public/images/question.png`,
               rotation: features[key].yaw / 57.2958 + this.currentRotation,
             }));
           }
@@ -2362,7 +2420,8 @@ class MapCanvas {
         image: new Icon({
           opacity: settings.alpha,
           scale: settings.size,
-          src: `${BASE_URL}/public/images/${settings.image}`,
+          src: `./images/${settings.image}`,
+          // src: `${BASE_URL}/public/images/${settings.image}`,
           rotation: yaw / 57.2958 - this.currentRotation,
         }),
       }));
@@ -2382,7 +2441,8 @@ class MapCanvas {
         image: new Icon({
           opacity: 1,
           scale: 0.2,
-          src: `${BASE_URL}/public/images/question.png`,
+          src: `./images/question.png`,
+          // src: `${BASE_URL}/public/images/question.png`,
           rotation: yaw / 57.2958 - this.currentRotation,
         }),
       }));
@@ -2401,8 +2461,10 @@ class MapCanvas {
 
       try {
 
+        // console.log(featureParams.type);
+        // console.log(this.MarkersObject);
         // console.log(this.MarkersObject[featureParams.type]);
-        if (this.MarkersObject[featureParams.type].polygonModel !== '-' && featureParams.parentID === 0) {
+        if (this.MarkersObject[featureParams.type] && this.MarkersObject[featureParams.type].polygonModel !== '-' && featureParams.parentID === 0) {
 
           if (!this.PolygonsLayerSource.getFeatureById(featureParams.id)) {
             const polygon = new Polygon([polygons[this.MarkersObject[featureParams.type].polygonModel]]);
@@ -2441,7 +2503,7 @@ class MapCanvas {
 
             this.PolygonsLayerSource.addFeature(polygonFeature);
           } else {
-            this.movePolygonLayerFeature(featureParams.id, featureParams.longitude, featureParams.latitude);
+            this.movePolygonLayerFeature(featureParams.id, featureParams.lon, featureParams.lat);
             this.rotatePolygonLayerFeature(featureParams.id, featureParams.yaw);
           }
 
@@ -2487,8 +2549,8 @@ class MapCanvas {
       const hasMercatorCoords = "X" in featureParams;
 
       const coords = [
-        hasMercatorCoords ? featureParams.X : featureParams.longitude,
-        hasMercatorCoords ? featureParams.Y : featureParams.latitude,
+        hasMercatorCoords ? featureParams.X : featureParams.lon,
+        hasMercatorCoords ? featureParams.Y : featureParams.lat,
       ];
 
       if (this.lockedView) {

@@ -9,19 +9,14 @@ import Select from '../Select';
 
 const MapSettingsPanel: FC = () => {
 
-  // const [viewLocked, setViewLocked] = useState<boolean>(false);
-
-  const { Map, MapID, pinObjects, pinObject, zoomLevel, rotation, gridStep, lockedView } = useSelector((state: RootState) => ({
-    Map: state.Map.maps[`map${state.Map.selectedMap}`],
-    MapID: Number(state.Map.selectedMap),
-    pinObjects: state.pinObjects.objects,
-    pinObject: state.sidebar[Number(state.Map.selectedMap)].viewSettings.object,
-    // selectedPinObject: state.pinObjects.selected,
-    zoomLevel: state.sidebar[Number(state.Map.selectedMap)].viewSettings.zoom,
-    rotation: state.sidebar[Number(state.Map.selectedMap)].viewSettings.rotation,
-    gridStep: state.sidebar[Number(state.Map.selectedMap)].viewSettings.gridStep,
-    lockedView: state.sidebar[Number(state.Map.selectedMap)].viewSettings.locked,
-  }));
+  const Map = useSelector((state: RootState) => state.Map.maps[`map${state.Map.selectedMap}`]);
+  const MapID = useSelector((state: RootState) => Number(state.Map.selectedMap));
+  const pinObjects = useSelector((state: RootState) => state.pinObjects.objects);
+  const pinObject = useSelector((state: RootState) => state.sidebar[Number(state.Map.selectedMap)].viewSettings.object);
+  const zoomLevel = useSelector((state: RootState) => state.sidebar[Number(state.Map.selectedMap)].viewSettings.zoom);
+  const rotation = useSelector((state: RootState) => state.sidebar[Number(state.Map.selectedMap)].viewSettings.rotation);
+  const gridStep = useSelector((state: RootState) => state.sidebar[Number(state.Map.selectedMap)].viewSettings.gridStep);
+  const lockedView = useSelector((state: RootState) => state.sidebar[Number(state.Map.selectedMap)].viewSettings.locked);
 
   const [prevRotation, setPrevRotation] = useState<number>(0);
 

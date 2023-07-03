@@ -1,6 +1,7 @@
 import net from 'net';
 import config from 'config';
 import dgram from 'dgram';
+import ip from "ip";
 import fs, { readFileSync, writeFileSync } from 'fs';
 import express from 'express';
 import path from 'path';
@@ -13,6 +14,11 @@ import { v4 } from 'uuid';
 import Logger from './Logger';
 import { TCP } from './TcpConnection/TcpConnection';
 import { CASIntegration } from './TcpConnection/CASConnection';
+import { CSMConnection } from './TcpConnection/SoftwareModules/CSMConnection';
+import { CSMCallbackData } from './TcpConnection/types';
+import { ConnectionInterval } from './TcpConnection/ConnectionInterval';
+import { MBConnection } from './TcpConnection/SoftwareModules/MBConnection';
+import { exec } from 'child_process';
 
 interface IClients {
   [key: number]: WebSocket;
@@ -26,10 +32,36 @@ let clientID: number = 1;
 let routesID: number[] = [];
 const routesByMap: IRoutesByMap = {};
 const distancesByMap: IDistancesByMap = {};
-// const TcpConnection = TCP;
-const CASConnection = new CASIntegration();
+// const CAS = new CASIntegration();
 // const logger = new Logger();
 fs.writeFileSync(Logger.targetFile, '');
+
+// Run Frontend
+const currIP = ip.address();
+
+// fs.writeFile("../.env", `REACT_APP_API_IP='${currIP}'`, () => {
+//   Logger.info("IP записан в .env файл.")
+// });
+
+exec(`cd .. && REACT_APP_API_IP=${currIP} npm start`, (err, stdout, stderr) => {
+  if (err) {
+    Logger.error(`Ошибка при запуске фронтенда: ${err}`)
+  }
+
+  if (stderr) {
+    Logger.error(`Ошибка при запуске фронтенда: ${stderr}`)
+  }
+
+  Logger.info(`Фронтенд запущен на ${currIP}:7000 : ${stdout}`);
+});
+
+// Test Integration
+const callback = (data: CSMCallbackData) => {
+  MB = new MBConnection(data, sendData);
+};
+
+const CASConnection = new CSMConnection(callback);
+let MB;
 
 // TCP
 
@@ -181,7 +213,7 @@ app.use(cookieParser('key'));
 app.use('/public', express.static(path.join(__dirname, '/public')))
 // app.engine('html', engines.mustache);
 
-app.listen(3002, () => Logger.info('HTTP сервер запущен на 3002 порту.'));
+app.listen(7002, () => Logger.info('HTTP сервер запущен на 7002 порту.'));
 // app.listen(3002, () => console.log('HTTP сервер запущен на 3002 порту.'));
 
 app.get('/', (request: express.Request, response: express.Response) => {
@@ -634,7 +666,7 @@ export const sendData = (features: any[], routes: IRoutes) => {
   });
 }
 
-const wsServer = new ws.Server({ port: 3001 });
+const wsServer = new ws.Server({ port: 7001 });
 
 wsServer.on('connection', onConnect);
 wsServer.on('listening', (data) => {
@@ -670,5 +702,5 @@ function onConnect(wsClient: WebSocket) {
   });
 }
 
-Logger.info('WebSocket сервер запущен на 3001 порту');
+Logger.info('WebSocket сервер запущен на 7001 порту');
 // console.log('WebSocket сервер запущен на 3001 порту');

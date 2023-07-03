@@ -1,4 +1,4 @@
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, memo, useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { BASE_URL, testConnection } from '../../api';
 import { setFeaturesData } from '../../store/featuresDataSlice';
@@ -7,10 +7,9 @@ import { RootState, store } from '../../store/store';
 import { IRoutes } from '../../wsTypes';
 
 const WebSocketConnection: FC = () => {
-
   const dispatch = useDispatch();
   const [ws, setWS] = useState<WebSocket>();
-  const Maps = useSelector((state: RootState) => Object.values(state.Map.maps));
+  const Maps = useSelector((state: RootState) => state.Map.maps);
 
   useEffect(() => {
     // console.log(BASE_URL, `ws${BASE_URL.slice(4, BASE_URL.length - 1)}1`);
@@ -59,8 +58,8 @@ const WebSocketConnection: FC = () => {
       dispatch(changePinObjects(features.filter((f: any) => "id" in f).map((f: any) => f.id)));
       dispatch(setFeaturesData(features));
 
-      console.log(features[1].Psi);
-      for (let Map of Maps) {
+      // console.log(features);
+      for (let Map of Object.values(Maps)) {
         Map.updateFeaturesDataNew(features);
 
         const mapID = Map.getDivID();
@@ -104,7 +103,7 @@ const WebSocketConnection: FC = () => {
       ws.removeEventListener('message', wsOnMessage);
       ws.removeEventListener('close', wsOnClose);
     };
-  }, [Maps]);
+  }, [ws, Maps]);
 
   return (
     <></>
